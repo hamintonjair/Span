@@ -1,0 +1,1027 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { 
+  DocumentArrowUpIcon, 
+  CurrencyDollarIcon, 
+  CheckCircleIcon, 
+  ClockIcon, 
+  XCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
+} from '@heroicons/react/24/outline';
+import { useToast } from '@/components/ui/toast';
+
+interface Comprobante {
+  id: string;
+  empresa_id: string;
+  suscripcion_id?: string;
+  nombre_archivo: string;
+  url_archivo: string;
+  tipo_archivo: string;
+  tamano_bytes: number;
+  estado: string;
+  verificado: boolean;
+  notas: string | null;
+  fecha_envio: string;
+  fecha_verificacion?: string;
+  verificado_por?: string;
+  creado_en: string;
+  actualizado_en: string;
+  monto: number;
+}
+
+interface Pago {
+  id: string;
+  empresa_id: string;
+  plan_id?: string;
+  estado: string;
+  metodo_pago?: string;
+  creado_en: string;
+  actualizado_en: string;
+  monto?: number;
+  proximo_vencimiento?: string;
+  estado_pago?: string;
+  comprobante_url?: string;
+  verificado?: boolean;
+  comprobante_id?: string;
+}
+
+interface Empresa {
+  id: string;
+  fecha_vencimiento?: string;
+  plan_id: string;
+}
+
+export default function FinanzasEmpresaPage() {
+  const supabase = createClient();
+  const { showToast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  
+  const [showComprobanteModal, setShowComprobanteModal] = useState(false);
+  const [selectedComprobante, setSelectedComprobante] = useState<Comprobante | null>(null);
+
+  const [filtroEstado, setFiltroEstado] = useState('aprobados-rechazados');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [itemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pagos, setPagos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState('');
+
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // ✅ FIX 1: empresaId en estado para que el useEffect de filtros pueda accederlo
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
+
+useEffect(() => {
+  let mounted = true;
+
+  const checkInitialSession = async () => {
+    try {
+      // 1. Preguntamos por la sesión de forma inmediata
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log("Sesión inicial:", session?.user?.id);
+      
+      if (session?.user) {
+        handleUserSetup(session.user);
+        return; // Salimos temprano si hay sesión
+      }
+      
+      // 2. Si no hay sesión, verificamos si hay un token en las cookies/localStorage
+      console.log("Verificando tokens almacenados...");
+      
+      // Intentar refresh manual del token
+      try {
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (!refreshError && refreshedSession?.user) {
+          console.log("¡Sesión refrescada exitosamente!");
+          handleUserSetup(refreshedSession.user);
+          return;
+        }
+      } catch (refreshErr) {
+        console.log("Error al refrescar sesión:", refreshErr);
+      }
+      
+      // 3. Si no hay sesión, intentamos múltiples veces con diferentes enfoques
+      console.log("Esperando evento INITIAL_SESSION...");
+      
+      let attempts = 0;
+      const maxAttempts = 5;
+      const checkInterval = 1000; // 1 segundo entre intentos
+      
+      const checkSessionAgain = async () => {
+        attempts++;
+        console.log(`Intento ${attempts}/${maxAttempts} para obtener sesión`);
+        
+        try {
+          // Intentar refresh en cada intento
+          const { data: { session: refreshAttempt } } = await supabase.auth.refreshSession();
+          if (refreshAttempt?.user) {
+            console.log("¡Sesión refrescada en el intento", attempts);
+            handleUserSetup(refreshAttempt.user);
+            return;
+          }
+          
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession?.user) {
+            console.log("¡Sesión encontrada en el intento", attempts);
+            handleUserSetup(retrySession.user);
+            return;
+          }
+          
+          // También intentamos getUser directamente
+          const { data: { user: directUser } } = await supabase.auth.getUser();
+          if (directUser) {
+            console.log("¡Usuario encontrado con getUser() en el intento", attempts);
+            handleUserSetup(directUser);
+            return;
+          }
+          
+          if (attempts < maxAttempts && mounted) {
+            setTimeout(checkSessionAgain, checkInterval);
+          } else if (mounted && !user && !empresaId) {
+            console.log("No se encontró sesión después de", maxAttempts, "intentos");
+            // Último recurso: intentar forzar un refresh completo
+            try {
+              const { data: { session: finalRefresh } } = await supabase.auth.refreshSession();
+              if (finalRefresh?.user) {
+                console.log("¡Sesión recuperada en último intento!");
+                handleUserSetup(finalRefresh.user);
+                return;
+              }
+            } catch (finalError) {
+              console.error("Error en último intento:", finalError);
+            }
+            
+            setAuthError('No hay sesión activa. Por favor inicia sesión.');
+            setAuthLoading(false);
+          }
+        } catch (error) {
+          console.error(`Error en intento ${attempts}:`, error);
+          if (attempts < maxAttempts && mounted) {
+            setTimeout(checkSessionAgain, checkInterval);
+          } else if (mounted) {
+            setAuthError('Error al verificar la sesión');
+            setAuthLoading(false);
+          }
+        }
+      };
+      
+      // Iniciar los reintentos
+      setTimeout(checkSessionAgain, 500); // Primer intento después de 500ms
+    } catch (err) {
+      console.error("Error inicial:", err);
+      if (mounted) {
+        setAuthError('Error al verificar la sesión');
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const handleUserSetup = async (currentUser: any) => {
+    if (!mounted) return;
+    
+    console.log("Configurando usuario:", currentUser?.id);
+    
+    const id = currentUser.user_metadata?.empresa_id;
+    if (!id) {
+      console.error("No se encontró empresa_id en metadata:", currentUser.user_metadata);
+      setAuthError('No se encontró la empresa asociada al usuario');
+      setAuthLoading(false);
+      return;
+    }
+
+    setUser(currentUser);
+    setEmpresaId(id);
+
+    // Cargar datos de la empresa
+    try {
+      const { data: empresaData, error: empresaError } = await supabase
+        .from('empresas')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (empresaError) {
+        console.error('Error cargando empresa:', empresaError);
+        setAuthError('Error al cargar la información de la empresa');
+        setAuthLoading(false);
+        return;
+      }
+
+      if (empresaData && mounted) {
+        console.log("Empresa cargada exitosamente:", (empresaData as any).id);
+        setEmpresa(empresaData);
+        setAuthError(null);
+        setAuthLoading(false);
+      }
+    } catch (error) {
+      console.error('Error en handleUserSetup:', error);
+      if (mounted) {
+        setAuthError('Error al configurar el usuario');
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  // Ejecutamos chequeo inicial
+  checkInitialSession();
+
+  // 3. El Listener es quien manda: si cambia la sesión, actualizamos
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log("Evento Auth detectado:", event, session?.user?.id);
+    
+    // ✅ FIX: Manejar INITIAL_SESSION undefined correctamente
+    if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && session?.user)) {
+      if (session?.user) {
+        handleUserSetup(session.user);
+      }
+    } else if (event === 'INITIAL_SESSION' && !session) {
+      // Si INITIAL_SESSION llega sin sesión, intentamos recuperación agresiva
+      console.log("INITIAL_SESSION sin datos, intentando recuperación agresiva...");
+      
+      const attemptRecovery = async () => {
+        try {
+          // 1. Intentar refresh inmediato
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (!refreshError && refreshedSession?.user) {
+            console.log("¡Sesión refrescada desde listener!");
+            handleUserSetup(refreshedSession.user);
+            return;
+          }
+          
+          // 2. Intentar getUser directamente
+          const { data: { user: directUser } } = await supabase.auth.getUser();
+          if (directUser && mounted) {
+            console.log("¡Usuario recuperado desde listener!");
+            handleUserSetup(directUser);
+            return;
+          }
+          
+          // 3. Intentar getSession
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession?.user && mounted) {
+            console.log("¡Sesión recuperada desde listener!");
+            handleUserSetup(retrySession.user);
+            return;
+          }
+          
+          if (mounted && !user && !empresaId) {
+            console.log("Todos los intentos de recuperación fallaron en listener");
+            setAuthError('No hay sesión activa. Por favor inicia sesión.');
+            setAuthLoading(false);
+          }
+        } catch (error) {
+          console.error("Error en recuperación desde listener:", error);
+          if (mounted && !user && !empresaId) {
+            setAuthError('Error al recuperar la sesión');
+            setAuthLoading(false);
+          }
+        }
+      };
+      
+      // Ejecutar recuperación inmediata y luego cada 2 segundos
+      attemptRecovery();
+      const recoveryInterval = setInterval(() => {
+        if (mounted && !user && !empresaId) {
+          attemptRecovery();
+        } else {
+          clearInterval(recoveryInterval);
+        }
+      }, 2000);
+      
+      // Limpiar intervalo después de 10 segundos máximo
+      setTimeout(() => {
+        clearInterval(recoveryInterval);
+      }, 10000);
+    } else if (event === 'SIGNED_OUT') {
+      setAuthError('Sesión cerrada');
+      setAuthLoading(false);
+    }
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
+
+  // ✅ FIX 2: useEffect que dispara loadPagos cuando cambian filtros, página o empresaId
+  useEffect(() => {
+    if (empresaId) {
+      loadPagos();
+    }
+  }, [empresaId, filtroEstado, fechaInicio, fechaFin, currentPage]);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      console.log('Auth state change:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        const id = session.user.user_metadata?.empresa_id;
+        
+        if (id) {
+          setEmpresaId(id);
+          
+          // Cargar información de la empresa
+          try {
+            const { data: empresaData, error: empresaError } = await supabase
+              .from('empresas')
+              .select('*')
+              .eq('id', id)
+              .single();
+            
+            if (!empresaError && empresaData && mounted) {
+              setEmpresa(empresaData);
+            }
+          } catch (error) {
+            console.error('Error cargando empresa en auth change:', error);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (mounted) {
+          setUser(null);
+          setEmpresa(null);
+          setEmpresaId(null);
+          setPagos([]);
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  const loadPagos = async () => {
+    try {
+      setLoading(true);
+      
+      // ✅ FIX 3: Usar el estado empresaId con validación robusta
+      const currentEmpresaId = empresaId || user?.user_metadata?.empresa_id;
+
+      if (!currentEmpresaId) {
+        console.error('❌ No hay empresa_id disponible');
+        // No establecer setLoading(false) aquí para evitar parpadeos si se está cargando
+        return;
+      }
+      
+      console.log('✅ Cargando pagos para empresa_id:', currentEmpresaId);
+      
+      let query = supabase
+        .from('comprobantes')
+        .select('*', { count: 'exact' })
+        .eq('empresa_id', currentEmpresaId)
+        .order('actualizado_en', { ascending: false });
+
+      // ✅ FIX 4: Lógica de filtro de estado corregida
+      if (filtroEstado === 'aprobados-rechazados') {
+        query = query.in('estado', ['aprobado', 'rechazado']);
+      } else {
+        query = query.eq('estado', filtroEstado);
+      }
+      
+      if (fechaInicio) {
+        query = query.gte('actualizado_en', new Date(fechaInicio).toISOString());
+      }
+      
+      if (fechaFin) {
+        query = query.lte('actualizado_en', new Date(fechaFin + 'T23:59:59').toISOString());
+      }
+      
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('❌ Error en consulta de pagos:', error);
+        throw error;
+      }
+      
+      console.log('✅ Pagos cargados:', data?.length, 'Total:', count);
+      setPagos(data || []);
+      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+    } catch (error) {
+      console.error('❌ Error cargando pagos:', error);
+      setPagos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canUploadComprobante = () => {
+    if (!empresa?.fecha_vencimiento) return true;
+    
+    const today = new Date();
+    const vencimientoDate = new Date(empresa.fecha_vencimiento);
+    const daysUntilVencimiento = Math.ceil((vencimientoDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isVencido = today > vencimientoDate;
+    
+    return daysUntilVencimiento <= 2 || isVencido;
+  };
+
+  const handleFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedMonth || !selectedFile) {
+      showToast('Por favor selecciona el mes y el archivo', 'warning');
+      return;
+    }
+
+    if (!canUploadComprobante()) {
+      showToast('Solo puede subir comprobantes el día de vencimiento o cuando el plan esté vencido', 'warning');
+      return;
+    }
+
+    // Validación robusta de empresaId
+    const currentEmpresaId = empresaId || user?.user_metadata?.empresa_id;
+    if (!currentEmpresaId) {
+      showToast('Error: No se encontró la empresa asociada', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      // ✅ FIX: Usar timestamp para evitar caracteres especiales
+      const timestamp = Date.now();
+      const fileExtension = selectedFile.name.split('.').pop();
+      const sanitizedName = `comprobante_${timestamp}.${fileExtension}`;
+      const fileName = `${currentEmpresaId}/${selectedMonth}/${sanitizedName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('comprobantes')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) {
+        console.error('Error de bucket:', uploadError);
+        showToast('Error al subir archivo al almacenamiento', 'error');
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('comprobantes')
+        .getPublicUrl(fileName);
+
+      const { error: insertError } = await supabase
+        .from('comprobantes')
+        .insert({
+          empresa_id: currentEmpresaId,
+          nombre_archivo: sanitizedName,
+          url_archivo: publicUrl,
+          tipo_archivo: selectedFile.type,
+          tamano_bytes: selectedFile.size,
+          estado: 'pendiente' as const,
+          verificado: false,
+          notas: null,
+          fecha_envio: new Date().toISOString(),
+          creado_en: new Date().toISOString(),
+          actualizado_en: new Date().toISOString(),
+          monto: 0
+        } as any);
+
+      if (insertError) {
+        console.error('Error insertando comprobante:', insertError);
+        showToast('Error al registrar comprobante en la base de datos', 'error');
+        throw insertError;
+      }
+
+      setSelectedMonth('');
+      setSelectedFile(null);
+      
+      await loadPagos();
+      
+      showToast('Comprobante enviado. Tu suscripción se activará tras la verificación global', 'success');
+    } catch (error) {
+      console.error('Error subiendo comprobante:', error);
+      showToast('Error al subir comprobante. Por favor intenta nuevamente', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatearFecha = (fecha: string) => {
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatearMonto = (monto?: number) => {
+    if (!monto) return '$0';
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(monto);
+  };
+
+  const openComprobanteModal = (comprobante: any) => {
+    setSelectedComprobante(comprobante);
+    setShowComprobanteModal(true);
+  };
+
+  const closeComprobanteModal = () => {
+    setShowComprobanteModal(false);
+    setSelectedComprobante(null);
+  };
+
+  const getUploadMessage = () => {
+    if (!empresa?.fecha_vencimiento) return '';
+    
+    const today = new Date();
+    const vencimientoDate = new Date(empresa.fecha_vencimiento);
+    const daysUntilVencimiento = Math.ceil((vencimientoDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilVencimiento > 2) {
+      return `📅 El botón se habilitará automáticamente en ${daysUntilVencimiento - 2} día${daysUntilVencimiento - 2 === 1 ? '' : 's'}.`;
+    }
+    
+    return '';
+  };
+
+  // ✅ FIX 5: Handler para limpiar filtros también resetea la página
+  const handleLimpiarFiltros = () => {
+    setFiltroEstado('aprobados-rechazados');
+    setFechaInicio('');
+    setFechaFin('');
+    setCurrentPage(1);
+  };
+
+  return (
+    <MainLayout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Finanzas</h1>
+          <p className="text-gray-600">Gestiona tus pagos y comprobantes de suscripción</p>
+        </div>
+
+        {authLoading ? (
+          <div className="text-center py-8">
+            <div className="w-8 h-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto mb-2"></div>
+            <p className="text-gray-600">Cargando sesión...</p>
+          </div>
+        ) : authError && !user ? (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 font-medium">{authError}</p>
+            <p className="text-red-600 text-sm mt-1">Por favor inicia sesión para acceder a esta página.</p>
+          </div>
+        ) : user ? (
+          <div>
+            {getUploadMessage() && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-amber-800">{getUploadMessage()}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <DocumentArrowUpIcon className="w-5 h-5" />
+                      <h2 className="text-lg font-semibold">Subir Comprobante</h2>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleFileUpload} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Mes del pago
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          required
+                        >
+                          <option value="">Selecciona un mes</option>
+                          <option value="enero">Enero</option>
+                          <option value="febrero">Febrero</option>
+                          <option value="marzo">Marzo</option>
+                          <option value="abril">Abril</option>
+                          <option value="mayo">Mayo</option>
+                          <option value="junio">Junio</option>
+                          <option value="julio">Julio</option>
+                          <option value="agosto">Agosto</option>
+                          <option value="septiembre">Septiembre</option>
+                          <option value="octubre">Octubre</option>
+                          <option value="noviembre">Noviembre</option>
+                          <option value="diciembre">Diciembre</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Comprobante de pago
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={uploading || !canUploadComprobante()}
+                        className="w-full"
+                      >
+                        {uploading ? (
+                          <div className="flex items-center justify-center">
+                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2"></div>
+                            Subiendo...
+                          </div>
+                        ) : 'Subir Comprobante'}
+                      </Button>
+
+                      {getUploadMessage() && (
+                        <p className="text-sm text-amber-600 mt-2">
+                          {getUploadMessage()}
+                        </p>
+                      )}
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <CurrencyDollarIcon className="w-5 h-5 text-green-600" />
+                      <h2 className="text-lg font-semibold">Estado de Suscripción</h2>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {empresa ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="text-sm text-gray-600">Próximo vencimiento</p>
+                            <p className="text-lg font-semibold text-gray-900">
+                              {empresa.fecha_vencimiento 
+                                ? new Date(empresa.fecha_vencimiento).toLocaleDateString('es-ES', {
+                                    day: '2-digit',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })
+                                : 'No definido'
+                              }
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">Plan actual</p>
+                            <p className="text-lg font-semibold text-blue-600">
+                              {empresa.plan_id ? 'Plan Activo' : 'Sin plan'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="w-8 h-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto mb-2"></div>
+                        <p className="text-gray-600">Cargando información de suscripción...</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Historial de Pagos */}
+            <Card className="mt-6">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Historial de Pagos</h3>
+                    <p className="text-sm text-gray-600">Comprobantes aprobados y rechazados</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* ✅ FIX 6: Filtros siempre visibles, fuera del condicional de pagos vacíos */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={filtroEstado}
+                        onChange={(e) => {
+                          setFiltroEstado(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value="aprobados-rechazados">Aprobados y Rechazados</option>
+                        <option value="aprobado">Aprobados</option>
+                        <option value="rechazado">Rechazados</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={fechaInicio}
+                        onChange={(e) => {
+                          setFechaInicio(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={fechaFin}
+                        onChange={(e) => {
+                          setFechaFin(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        variant="outline"
+                        onClick={handleLimpiarFiltros}
+                      >
+                        Limpiar Filtros
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 animate-spin rounded-full border-2 border-amber-600 border-t-transparent mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Cargando historial...</p>
+                  </div>
+                ) : pagos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CurrencyDollarIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600">No hay pagos registrados</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Fecha
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Estado
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Monto
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Acciones
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {pagos.map((pago) => (
+                            <tr key={pago.id} className={pago.estado === 'rechazado' ? 'bg-red-50' : ''}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {formatearFecha(pago.actualizado_en || pago.fecha_envio)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {pago.estado === 'aprobado' ? (
+                                  <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                    <CheckCircleIcon className="w-3 h-3" />
+                                    Aprobado
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                    <XCircleIcon className="w-3 h-3" />
+                                    Rechazado
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div className="flex items-center">
+                                  <CurrencyDollarIcon className="w-4 h-4 text-green-600 mr-1" />
+                                  {formatearMonto(pago.monto)}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex gap-3">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openComprobanteModal(pago)}
+                                  >
+                                    Ver
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeftIcon className="w-4 h-4" />
+                        </Button>
+                        
+                        <span className="text-sm text-gray-600">
+                          Página {currentPage} de {totalPages}
+                        </span>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRightIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+
+        {/* Modal para ver comprobante */}
+        {showComprobanteModal && selectedComprobante && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Comprobante de Pago
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={closeComprobanteModal}
+                >
+                  <XCircleIcon className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="bg-green-50/50 rounded-lg p-6 border border-green-100">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Detalles del Pago</h4>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Monto</label>
+                      <div className="flex items-center text-lg font-semibold text-green-600 bg-white px-3 py-2 rounded border border-green-200">
+                        <CurrencyDollarIcon className="w-5 h-5 mr-2" />
+                        {formatearMonto(selectedComprobante.monto)}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                      <p className="text-base text-gray-900 bg-white px-3 py-2 rounded border border-green-200">Pago de Suscripción</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del archivo</label>
+                      <p className="text-base text-gray-900 bg-white px-3 py-2 rounded border border-green-200">{selectedComprobante?.nombre_archivo || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                      <div className="flex items-center">
+                        {selectedComprobante.estado === 'aprobado' ? (
+                          <span className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            <CheckCircleIcon className="w-4 h-4" />
+                            Aprobado
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                            <XCircleIcon className="w-4 h-4" />
+                            Rechazado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de envío</label>
+                      <p className="text-base text-gray-900 bg-white px-3 py-2 rounded border border-green-200">{formatearFecha(selectedComprobante.fecha_envio)}</p>
+                    </div>
+                    {selectedComprobante.fecha_verificacion && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de verificación</label>
+                        <p className="text-base text-gray-900 bg-white px-3 py-2 rounded border border-green-200">{formatearFecha(selectedComprobante.fecha_verificacion)}</p>
+                      </div>
+                    )}
+                    {selectedComprobante.verificado_por && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Verificado por</label>
+                        <p className="text-base text-gray-900 bg-white px-3 py-2 rounded border border-green-200">{selectedComprobante.verificado_por}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {selectedComprobante.estado === 'rechazado' && selectedComprobante.notas && (
+                  <div className="bg-orange-50 rounded-lg p-6 border-2 border-orange-300">
+                    <div className="flex items-center mb-3">
+                      <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <h4 className="text-lg font-medium text-orange-900">Notas de Rechazo</h4>
+                    </div>
+                    <p className="text-base text-orange-900 bg-white px-4 py-3 rounded border border-orange-200 leading-relaxed">{selectedComprobante.notas}</p>
+                  </div>
+                )}
+                
+                {selectedComprobante.estado !== 'rechazado' && selectedComprobante.notas && (
+                  <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center mb-3">
+                      <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h4 className="text-lg font-medium text-blue-900">Notas del Administrador</h4>
+                    </div>
+                    <p className="text-base text-blue-900 bg-white px-4 py-3 rounded border border-blue-200 leading-relaxed">{selectedComprobante.notas}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Comprobante</label>
+                  <div className="flex justify-center items-center">
+                    <div className="border rounded-lg overflow-hidden shadow-lg">
+                      {selectedComprobante.url_archivo ? (
+                        selectedComprobante.tipo_archivo?.startsWith('image/') ? (
+                          <img
+                            src={selectedComprobante.url_archivo}
+                            alt="Comprobante de pago"
+                            className="max-h-[500px] w-auto object-contain"
+                          />
+                        ) : (
+                          <iframe
+                            src={selectedComprobante.url_archivo}
+                            className="w-full h-[500px]"
+                            title="Comprobante de pago"
+                          />
+                        )
+                      ) : (
+                        <div className="flex items-center justify-center h-96 bg-gray-50">
+                          <p className="text-gray-500">No hay comprobante disponible</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                  {selectedComprobante.url_archivo && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(selectedComprobante.url_archivo, '_blank')}
+                    >
+                      Abrir en nueva pestaña
+                    </Button>
+                  )}
+                  <Button onClick={closeComprobanteModal}>
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  );
+}
