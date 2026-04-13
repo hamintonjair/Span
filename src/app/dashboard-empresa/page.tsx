@@ -96,11 +96,8 @@ export default function DashboardEmpresaPage() {
       return;
     }
     
-    // Si es admin_global, redirigir a su dashboard
-    if (user && user.rol === 'admin_global') {
-      router.push('/admin-dashboard');
-      return;
-    }
+    // Permitir que admin_global vea el dashboard-empresa si lo desea
+    // No redirigir automáticamente a admin-dashboard
   }, [user, router]);
 
   if (loading) {

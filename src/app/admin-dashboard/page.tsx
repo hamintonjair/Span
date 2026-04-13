@@ -55,8 +55,6 @@ interface Empresa {
   plan_id: string;
   estado_suscripcion: string;
   fecha_vencimiento: string;
-  created_at: string;
-  updated_at: string;
   perfiles_count?: number;
   empleados_count?: number;
   total_ventas?: number;
@@ -259,11 +257,9 @@ export default function AdminDashboardPage() {
           nombre,
           plan_id,
           estado_suscripcion,
-          fecha_vencimiento,
-          created_at,
-          updated_at
+          fecha_vencimiento
         `)
-        .order('created_at', { ascending: false });
+        .order('nombre', { ascending: true });
 
       if (empresasError) throw empresasError;
 
@@ -815,9 +811,6 @@ export default function AdminDashboardPage() {
                     <tr key={empresa.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{empresa.nombre}</div>
-                        <div className="text-sm text-gray-500">
-                          Creada: {new Date(empresa.created_at).toLocaleDateString()}
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getEstadoColor(empresa.estado_suscripcion)}`}>

@@ -513,6 +513,33 @@ export default function CitasPage() {
     setMostrarServicios(false);
   };
 
+  // Función para toggle de selección de servicios
+  const toggleServicioSeleccionado = (servicioId: string) => {
+    setNuevaCita(prev => {
+      const serviciosIds = prev.servicios_ids.includes(servicioId)
+        ? prev.servicios_ids.filter(id => id !== servicioId)
+        : [...prev.servicios_ids, servicioId];
+      
+      return { ...prev, servicios_ids: serviciosIds };
+    });
+  };
+
+  // Función para calcular total de servicios
+  const getTotalServicios = () => {
+    return nuevaCita.servicios_ids.reduce((total, servicioId) => {
+      const servicio = servicios.find((s: Servicio) => s.id === servicioId);
+      return total + (servicio?.precio || 0);
+    }, 0);
+  };
+
+  // Función para calcular duración total
+  const getDuracionTotal = () => {
+    return nuevaCita.servicios_ids.reduce((total, servicioId) => {
+      const servicio = servicios.find((s: Servicio) => s.id === servicioId);
+      return total + (servicio?.duracion_minutos || 0);
+    }, 0);
+  };
+
   // Función para abrir modal de nueva cita con fecha específica
   const abrirModalNuevaCita = (fecha?: string) => {
     resetFormularioNuevaCita();
@@ -588,8 +615,11 @@ export default function CitasPage() {
         return total + (servicio?.precio || 0);
       }, 0);
       
-      const primerServicio = servicios.find((s: Servicio) => s.id === nuevaCita.servicios_ids[0]);
-      const duracionEstimada = primerServicio?.duracion_minutos || 30;
+      // Calcular duración total como suma de todos los servicios seleccionados
+      const duracionTotal = nuevaCita.servicios_ids.reduce((total, servicioId) => {
+        const servicio = servicios.find((s: Servicio) => s.id === servicioId);
+        return total + (servicio?.duracion_minutos || 0);
+      }, 0);
       
       const citaParaInsertar = {
         empresa_id: user.empresa_id,
@@ -598,7 +628,7 @@ export default function CitasPage() {
         fecha: convertirFechaLocalAUTC(nuevaCita.fecha),
         estado: 'pendiente',
         total_estimado: totalEstimado || 0,
-        duracion_minutos: duracionEstimada,
+        duracion_minutos: duracionTotal || 30,
         servicios_ids: nuevaCita.servicios_ids,
         notas: nuevaCita.notas || null
       };
@@ -1433,29 +1463,30 @@ export default function CitasPage() {
             {/* Servicios */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Servicio *
+                Servicios *
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Buscar servicio por nombre..."
+                  placeholder="Buscar servicios por nombre..."
                   value={busquedaServicio}
-                  onChange={(e) => {
-                    setBusquedaServicio(e.target.value);
-                    const servicioEncontrado = servicios.find((s: Servicio) => 
-                      s.nombre?.toLowerCase().includes(e.target.value.toLowerCase())
-                    );
-                    if (servicioEncontrado) {
-                      setNuevaCita((prev: NuevaCita) => ({
-                        ...prev,
-                        servicios_ids: [servicioEncontrado.id]
-                      }));
-                    }
-                  }}
+                  onChange={(e) => setBusquedaServicio(e.target.value)}
                   className="pl-10"
                 />
               </div>
+              
+              {/* Resumen de Selección */}
+              {nuevaCita.servicios_ids.length > 0 && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm font-medium text-blue-800">
+                    {nuevaCita.servicios_ids.length} servicio{nuevaCita.servicios_ids.length !== 1 ? 's' : ''} seleccionado{nuevaCita.servicios_ids.length !== 1 ? 's' : ''}
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    Total: ${getTotalServicios().toFixed(2)} - Duración: {getDuracionTotal()} min
+                  </div>
+                </div>
+              )}
               
               <div className="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
                 {serviciosLimitados.length > 0 ? (
@@ -1467,26 +1498,37 @@ export default function CitasPage() {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
+                          <th className="px-2 py-1 text-left text-xs font-medium text-gray-700 w-8"></th>
                           <th className="px-2 py-1 text-left text-xs font-medium text-gray-700">Servicio</th>
                           <th className="px-2 py-1 text-left text-xs font-medium text-gray-700">Precio</th>
                           <th className="px-2 py-1 text-left text-xs font-medium text-gray-700">Duración (min)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {serviciosLimitados.map((servicio: Servicio) => (
-                          <tr
-                            key={servicio.id}
-                            onClick={() => {
-                              setNuevaCita((prev: NuevaCita) => ({...prev, servicios_ids: [servicio.id]}));
-                              setBusquedaServicio(servicio.nombre || '');
-                            }}
-                            className="hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-                          >
-                            <td className="px-2 py-1">{servicio.nombre}</td>
-                            <td className="px-2 py-1 text-gray-500">${servicio.precio?.toFixed(2)}</td>
-                            <td className="px-2 py-1 text-gray-500">{servicio.duracion_minutos} min</td>
-                          </tr>
-                        ))}
+                        {serviciosLimitados.map((servicio: Servicio) => {
+                          const isSelected = nuevaCita.servicios_ids.includes(servicio.id);
+                          return (
+                            <tr
+                              key={servicio.id}
+                              onClick={() => toggleServicioSeleccionado(servicio.id)}
+                              className={`hover:bg-gray-50 cursor-pointer border-b border-gray-100 ${
+                                isSelected ? 'bg-blue-50' : ''
+                              }`}
+                            >
+                              <td className="px-2 py-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {}}
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-2 py-1 font-medium">{servicio.nombre}</td>
+                              <td className="px-2 py-1 text-gray-500">${servicio.precio?.toFixed(2)}</td>
+                              <td className="px-2 py-1 text-gray-500">{servicio.duracion_minutos} min</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                     

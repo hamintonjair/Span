@@ -204,42 +204,56 @@ export default function AtencionesPage() {
   };
 
   // Iniciar atención
-  const iniciarAtencion = async (cita: Cita) => {
-    try {
-      const { error } = await supabase
-        .from('citas')
-        .update({ 
-          estado: 'en_proceso',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', cita.id);
+const iniciarAtencion = async (cita: Cita) => {
+  try {
+    // 1. Preparamos los datos de actualización. 
+    // Incluimos empleado_id para que el Trigger de Supabase no falle.
+    const datosActualizacion = {
+      estado: 'en_proceso',
+      updated_at: new Date().toISOString(),
+      empleado_id: cita.empleado_id // Pasamos el ID del profesional asignado
+    };
 
-      if (error) throw error;
+    // 2. Ejecutamos el update con casting 'as any' para silenciar errores de tipado en el linter
+    const { error } = await supabase
+      .from('citas')
+      .update(datosActualizacion as never)
+      .eq('id', cita.id);
 
-      // Cargar servicios iniciales al carrito
-      if (cita.servicios && cita.servicios.length > 0) {
-        const serviciosCarrito: CarritoItem[] = cita.servicios.map((servicio) => ({
-          id: `servicio_${servicio.id}_${Date.now()}`,
-          tipo: 'servicio' as const,
-          servicio: servicio,
-          cantidad: 1,
-          precio_unitario: servicio.precio || 0,
-          descuento: 0,
-          subtotal: servicio.precio || 0
-        }));
-
-        setCarrito(serviciosCarrito);
-      }
-
-      setAtencionActiva({ ...cita, estado: 'en_proceso' });
-      setCitas(citas.filter(c => c.id !== cita.id));
-      showToast('Atención iniciada', 'success');
-    } catch (error) {
-      console.error('Error iniciando atención:', error);
-      showToast('Error iniciando atención', 'error');
+    if (error) {
+      console.error('Error detallado de Supabase:', error);
+      throw error;
     }
-  };
 
+    // 3. Cargar servicios iniciales al carrito
+    if (cita.servicios && cita.servicios.length > 0) {
+      const serviciosCarrito: CarritoItem[] = cita.servicios.map((servicio) => ({
+        id: `servicio_${servicio.id}_${Date.now()}`,
+        tipo: 'servicio' as const,
+        servicio: servicio,
+        cantidad: 1,
+        precio_unitario: servicio.precio || 0,
+        descuento: 0,
+        subtotal: servicio.precio || 0,
+        // IMPORTANTE: Mantenemos el empleado en cada item del carrito
+        empleado_id: cita.empleado_id 
+      }));
+
+      setCarrito(serviciosCarrito);
+    }
+
+    // 4. Actualizar estados locales
+    setAtencionActiva({ ...cita, estado: 'en_proceso' });
+    setCitas(citas.filter(c => c.id !== cita.id));
+    
+    // Notificación visual (Toast)
+    showToast('Atención iniciada correctamente', 'success');
+
+  } catch (error: any) {
+    console.error('Error iniciando atención:', error);
+    showToast(error.message || 'Error al iniciar atención', 'error');
+  }
+};
   // Agregar producto al carrito
   const agregarProducto = (producto: Producto) => {
     const nuevoItem: CarritoItem = {
@@ -304,7 +318,7 @@ export default function AtencionesPage() {
         .insert({
           empresa_id: user?.empresa_id,
           cliente_id: atencionActiva.cliente_id,
-          empleado_id: atencionActiva.empleado_id,
+          vendedor_id: user?.id, // ID del empleado que realizó el servicio
           subtotal: totalAcumulado,
           total: totalAcumulado,
           metodo_pago: 'efectivo',
@@ -364,6 +378,11 @@ export default function AtencionesPage() {
       // Limpiar estados
       setAtencionActiva(null);
       setCarrito([]);
+      
+      // Redirigir al panel de préstamos para continuar la prueba
+      setTimeout(() => {
+        window.location.href = '/prestamos';
+      }, 1500);
       
     } catch (error) {
       console.error('Error finalizando atención:', error);

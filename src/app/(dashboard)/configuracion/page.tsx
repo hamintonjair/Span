@@ -28,14 +28,54 @@ export default function ConfiguracionPage() {
     logo_url: ''
   }); // Cast explícito para evitar errores de TypeScript
 
-  // Manejar cambios en el campo de logo URL
-  const handleLogoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    
+  // Estados para manejo de logo
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoError, setLogoError] = useState<string>('');
+
+  // Validar y procesar archivo de logo
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamaño (500KB)
+    if (file.size > 500 * 1024) {
+      setLogoError('El archivo no debe superar los 500 KB');
+      return;
+    }
+
+    // Validar formato
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setLogoError('El formato debe ser JPG, PNG o WebP');
+      return;
+    }
+
+    setLogoError('');
+    setLogoFile(file);
+
+    // Convertir a Base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64String = e.target?.result as string;
+      setLogoPreview(base64String);
+      setFormData((prev: any) => ({
+        ...prev,
+        logo_url: base64String
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Eliminar logo
+  const handleEliminarLogo = () => {
+    setLogoPreview('');
+    setLogoFile(null);
     setFormData((prev: any) => ({
       ...prev,
-      logo_url: value // Guardar URL original, la transformación se hace al mostrar
+      logo_url: ''
     }));
+    setLogoError('');
   };
 
   // Cargar datos de la empresa usando empresa_id del usuario
@@ -66,6 +106,11 @@ export default function ConfiguracionPage() {
           mensaje_ticket: empresaData.mensaje_ticket || '',
           logo_url: empresaData.logo_url || ''
         } as any); // Cast explícito para evitar errores de TypeScript
+        
+        // Establecer preview si existe logo
+        if (empresaData.logo_url) {
+          setLogoPreview(empresaData.logo_url);
+        }
       }
     } catch (error) {
       console.error('Error cargando empresa:', error);
@@ -292,44 +337,61 @@ export default function ConfiguracionPage() {
                   </p>
                 </div>
 
-                {/* Logo URL (ancho completo) */}
+                {/* Logo (ancho completo) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL del Logo (Opcional)
+                    Logo de la Empresa (Opcional)
                   </label>
-                  <div className="flex gap-4">
-                    <div className="flex-1 relative">
-                      <PhotoIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                      <input
-                        type="url"
-                        name="logo_url"
-                        value={formData.logo_url}
-                        onChange={handleLogoUrlChange}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="https://drive.google.com/file/d/ID_DEL_ARCHIVO/view"
-                      />
-                    </div>
-                    {/* Previsualización del logo */}
-                    {formData.logo_url && (
-                      <div className="w-16 h-16 border-2 border-gray-300 rounded-lg overflow-hidden flex items-center justify-center bg-white">
-                        <img 
-                          src={getDirectDriveUrl(formData.logo_url)} 
-                          alt="Logo preview" 
-                          className="w-full h-full object-contain"
-                          crossOrigin="anonymous"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400 text-2xl">🖼️</div>';
-                            return true;
-                          }}
+                  <div className="space-y-4">
+                    {/* Input de archivo */}
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleLogoChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                         />
+                        {logoError && (
+                          <p className="text-red-500 text-sm mt-1">{logoError}</p>
+                        )}
+                      </div>
+                      
+                      {/* Botón eliminar logo */}
+                      {logoPreview && (
+                        <Button
+                          variant="outline"
+                          onClick={handleEliminarLogo}
+                          className="px-4 py-2 text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          Eliminar Logo
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Previsualización del logo */}
+                    {logoPreview && (
+                      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo preview" 
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <p className="font-medium">Logo cargado correctamente</p>
+                          <p className="text-xs">Formato: {logoFile?.type}</p>
+                          <p className="text-xs">Tamaño: {logoFile ? (logoFile.size / 1024).toFixed(1) : '0'} KB</p>
+                        </div>
                       </div>
                     )}
+                    
+                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-blue-500">**</span>
+                      <span>Formatos permitidos: JPG, PNG, WebP. Tamaño máximo: 500 KB</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <span className="text-blue-500">💡</span>
-                    <span>Tip: Si usas Google Drive, asegúrate de que el archivo esté compartido como "Cualquier persona con el enlace"</span>
-                  </p>
                 </div>
               </form>
             </CardContent>

@@ -220,9 +220,9 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   },
   {
     title: 'Comisiones',
-    href: '/comisiones',
+    href: '/mis-comisiones',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa'],
+    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
     section: 'main',
     requiresPermission: 'commissions'
   },

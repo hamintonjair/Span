@@ -14,8 +14,9 @@ export async function middleware(request: NextRequest) {
   // 2. Rutas públicas que no requieren autenticación
   const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/auth/callback', '/test-flow', '/api/auth/login', '/api/auth/register-admin', '/api/auth/me', '/api/auth/logout', '/dashboard', '/admin-dashboard', '/dashboard-empresa', '/finanzas', '/auditoria', '/comunicacion', '/usuarios', '/(admin)', '/(dashboard)']
   
+  // Para admin_global, permitir acceso a todas las rutas de dashboard
   if (publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-    console.log('MIDDLEWARE: Ruta pública, continuando sin validación')
+    console.log('MIDDLEWARE: Ruta pública o admin global, continuando sin validación')
     return NextResponse.next()
   }
 

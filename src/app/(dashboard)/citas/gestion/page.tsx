@@ -12,6 +12,16 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { useRouter } from 'next/navigation';
 import { useCancelacionAutomatica } from '@/hooks/use-cancelacion-automatica';
 
+// Formateador de dinero para Colombia
+const formatMoney = (amount: number) => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 // Interfaces TypeScript
 interface Cita {
   id: string;
@@ -25,6 +35,8 @@ interface Cita {
   notas?: string | null;
   created_at: string;
   updated_at: string;
+  servicios_adicionales?: any[];
+  productos_adicionales?: any[];
 }
 
 interface Cliente {
@@ -338,6 +350,23 @@ export default function GestionCitasPage() {
         return;
       }
 
+      console.log('Verificando caja abierta para iniciar atención:', citaId);
+
+      // Verificar si hay caja abierta antes de permitir iniciar atención
+      const { data: cajaActiva, error: cajaError } = await (supabase as any)
+        .from('cajas')
+        .select('id')
+        .eq('empresa_id', user?.empresa_id || '')
+        .eq('estado', 'abierta')
+        .maybeSingle() as { data: { id: string } | null, error: any };
+
+      if (cajaError || !cajaActiva) {
+        mostrarToast('Debe abrir una caja antes de iniciar atención', 'error');
+        return;
+      }
+
+      console.log('Caja abierta verificada:', cajaActiva.id);
+
       console.log('🔄 Iniciando atención para cita:', citaId);
 
       // Cambiar estado a 'en_atencion'
@@ -387,12 +416,49 @@ export default function GestionCitasPage() {
     router.push(`/atencion?cita_id=${citaId}`);
   };
 
-  const verDetalles = (cita: Cita) => {
+  const verDetalles = async (cita: Cita) => {
     console.log('🔍 Ver detalles de cita:', cita);
     console.log('🔍 Estado:', cita.estado);
     console.log('🔍 Cita ID:', cita.id);
-    setSelectedCita(cita);
-    setShowDetalleModal(true);
+    
+    try {
+      // Cargar servicios adicionales y productos de la cita
+      const [serviciosAdicionales, productosAdicionales] = await Promise.all([
+        supabase
+          .from('cita_servicios_adicionales')
+          .select(`
+            id,
+            cantidad,
+            precio_unitario,
+            subtotal,
+            servicios(id, nombre, precio)
+          `)
+          .eq('cita_id', cita.id),
+        supabase
+          .from('cita_productos')
+          .select(`
+            id,
+            cantidad,
+            precio_unitario,
+            subtotal,
+            productos(id, nombre, precio_venta)
+          `)
+          .eq('cita_id', cita.id)
+      ]);
+
+      const citaConDatos = {
+        ...cita,
+        servicios_adicionales: serviciosAdicionales.data || [],
+        productos_adicionales: productosAdicionales.data || []
+      };
+
+      setSelectedCita(citaConDatos);
+      setShowDetalleModal(true);
+    } catch (error) {
+      console.error('Error cargando detalles adicionales:', error);
+      setSelectedCita(cita);
+      setShowDetalleModal(true);
+    }
   };
 
   // Filtrar citas
@@ -789,7 +855,7 @@ export default function GestionCitasPage() {
                       <div>
                         <span className="font-medium">Total:</span>
                         <span className="ml-2 font-semibold">
-                          ${selectedCita.total_estimado.toFixed(2)}
+                          {formatMoney(selectedCita.total_estimado)}
                         </span>
                       </div>
                     </div>
@@ -829,9 +895,47 @@ export default function GestionCitasPage() {
                     </div>
                     <div className="text-sm mt-1">
                       <span className="font-medium">Valor servicios:</span>
-                      <span className="ml-2">${citaConDatos.serviciosPrecio.toFixed(2)}</span>
+                      <span className="ml-2">{formatMoney(citaConDatos.serviciosPrecio)}</span>
                     </div>
                   </div>
+
+                  {/* Servicios Adicionales */}
+                  {selectedCita.servicios_adicionales && selectedCita.servicios_adicionales.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Servicios Adicionales</h3>
+                      <div className="space-y-2">
+                        {selectedCita.servicios_adicionales.map((servicio: any, index: number) => (
+                          <div key={index} className="text-sm bg-gray-50 p-3 rounded">
+                            <div className="font-medium">{servicio.servicios?.nombre || 'Servicio no encontrado'}</div>
+                            <div className="flex justify-between mt-1">
+                              <span>Cantidad: {servicio.cantidad}</span>
+                              <span>Precio unitario: {formatMoney(servicio.precio_unitario || 0)}</span>
+                              <span className="font-semibold">Subtotal: {formatMoney(servicio.subtotal || 0)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Productos Adicionales */}
+                  {selectedCita.productos_adicionales && selectedCita.productos_adicionales.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Productos Adicionales</h3>
+                      <div className="space-y-2">
+                        {selectedCita.productos_adicionales.map((producto: any, index: number) => (
+                          <div key={index} className="text-sm bg-blue-50 p-3 rounded">
+                            <div className="font-medium">{producto.productos?.nombre || 'Producto no encontrado'}</div>
+                            <div className="flex justify-between mt-1">
+                              <span>Cantidad: {producto.cantidad}</span>
+                              <span>Precio unitario: {formatMoney(producto.precio_unitario || 0)}</span>
+                              <span className="font-semibold">Subtotal: {formatMoney(producto.subtotal || 0)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {selectedCita.notas && (
                     <div>
@@ -873,20 +977,20 @@ export default function GestionCitasPage() {
                               .from('ventas')
                               .select('id, numero_factura')
                               .eq('cita_id', selectedCita.id)
-                              .single();
+                              .maybeSingle();
                             
-                            console.log('🔍 Resultado búsqueda venta:', { ventaData, ventaError });
+                            console.log('Resultado búsqueda venta:', { ventaData, ventaError });
                             
                             if (ventaData) {
-                              console.log('✅ Venta encontrada:', ventaData);
-                              console.log('🧾 Número de factura:', ventaData.numero_factura);
+                              console.log('Venta encontrada:', ventaData);
+                              console.log('Número de factura:', ventaData.numero_factura);
                               window.open(`/ventas/imprimir/${ventaData.id}`, '_blank');
                             } else {
-                              console.error('❌ No se encontró venta para la cita:', selectedCita.id);
+                              console.error('No se encontró venta para la cita:', selectedCita.id);
                               mostrarToast('No se encontró factura asociada a esta cita', 'error');
                             }
                           } catch (error) {
-                            console.error('❌ Error buscando venta:', error);
+                            console.error('Error buscando venta:', error);
                             mostrarToast('Error al buscar la factura', 'error');
                           }
                         }}

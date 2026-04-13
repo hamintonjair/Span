@@ -353,12 +353,7 @@ export default function AtencionPage() {
   // useEffect independiente para cargar ítems guardados
   useEffect(() => {
     if (citaId && cita && servicios.length > 0 && productos.length > 0) {
-      console.log('🔄 Triggering cargarServiciosProductosGuardados con:', {
-        citaId,
-        citaEstado: cita.estado,
-        serviciosCount: servicios.length,
-        productosCount: productos.length
-      });
+   
       cargarServiciosProductosGuardados();
     }
   }, [citaId, cita, servicios.length, productos.length]);
@@ -371,8 +366,6 @@ export default function AtencionPage() {
     
     setLoadingData(true);
     try {
-      console.log(' Cargando datos de atención para cita:', citaId);
-      console.log('🔄 Cargando datos de atención para cita:', citaId);
 
       // Cargar datos de la cita
       const { data: citaData, error: citaError } = await (supabase as any)
@@ -858,13 +851,7 @@ export default function AtencionPage() {
       
       const totalConIVA = subtotalTotal + ivaTotal;
 
-      console.log('📊 Cálculo de totales:', {
-        subtotalServicios,
-        subtotalProductos,
-        subtotalTotal,
-        ivaTotal,
-        totalConIVA
-      });
+     
 
       // 2. Actualizar inventario final (restar stock de productos adicionales)
       // Nota: Los productos ya se restaron al agregarlos, pero verificamos por seguridad
@@ -876,7 +863,7 @@ export default function AtencionPage() {
           const esProductoOriginal = false; // Los productos adicionales nunca son originales
           
           if (!esProductoOriginal) {
-            console.log(`📦 Verificando inventario del producto ${producto.nombre}`);
+           
             // Opcional: verificar stock actual antes de restar
             const { data: stockActual } = await (supabase as any)
               .from('productos')
@@ -884,40 +871,75 @@ export default function AtencionPage() {
               .eq('id', producto.id)
               .single();
             
-            console.log(`📊 Stock actual de ${producto.nombre}: ${stockActual?.stock || 0}`);
+          
             
             // Si el stock aún es suficiente, restamos (por si acaso no se restó antes)
             if (stockActual && stockActual.stock >= productoAdicional.cantidad) {
-              console.log(`📦 Restando ${productoAdicional.cantidad} unidades del producto ${producto.nombre}`);
+             
               await actualizarInventarioProducto(producto.id, -productoAdicional.cantidad);
             } else {
-              console.log(`⚠️ Stock insuficiente para ${producto.nombre}, saltando resta`);
-            }
+              }
           }
         }
       }
 
+   
+      
+      // 2.1. Verificar que haya caja abierta antes de continuar
+      const { data: cajaActiva, error: cajaError } = await supabase
+        .from('cajas')
+        .select('id')
+        .eq('empresa_id', user?.empresa_id || '')
+        .eq('estado', 'abierta')
+        .maybeSingle() as any;
+      
+      if (cajaError || !cajaActiva) {
+        console.error('❌ No hay caja abierta:', cajaError);
+        mostrarToast('Debes abrir caja antes de cobrar una cita', 'error');
+        return;
+      }
+      
+    
+      
+      // Obtener datos del empleado para comisiones
+      const { data: empleadoData, error: empleadoError } = await supabase
+        .from('empleados')
+        .select('comision_porcentaje')
+        .eq('id', empleado.id)
+        .single() as any;
+      
+      if (empleadoError) {
+        console.error('Error obteniendo datos de empleado:', empleadoError);
+      }
+      
+      // Calcular total de servicios para comisiones (solo servicios, no productos)
+      const totalServiciosParaComision = subtotalTotal; // Solo servicios base + adicionales
+      const comisionPorcentaje = empleadoData?.comision_porcentaje || 0;
+      const montoComision = totalServiciosParaComision * (comisionPorcentaje / 100);
+      
+
+
       // 3. Crear Venta (igual que POS)
       // Generar número de factura aleatorio de 9 dígitos
       const numFactura = Math.floor(100000000 + Math.random() * 900000000).toString();
-      console.log('🔢 Número de factura generado para atención:', numFactura);
+  
       
       const ventaData = {
         empresa_id: user?.empresa_id,
         cliente_id: cliente.id,
-        empleado_id: empleado.id,
+        vendedor_id: user?.id, // <- USUARIO DEL SISTEMA LOGUEADO QUE VENDE
         cita_id: cita.id, // Vincular con la cita
+        caja_id: cajaActiva.id, // <- CAJA ACTIVA OBLIGATORIO
         subtotal: subtotalTotal,
-        impuestos: ivaTotal, // ✅ Usar 'impuestos' en lugar de 'iva'
+        impuestos: ivaTotal, // - Usar 'impuestos' en lugar de 'iva'
+        descuentos: 0, // <- CAMPO DE DESCUENTOS EXISTENTE
         total: totalConIVA,
         metodo_pago: 'efectivo', // Por defecto, se puede ajustar
         estado: 'completada',
-        fecha: new Date().toISOString(), // ✅ Usar 'fecha' en lugar de 'created_at'
+        fecha: new Date().toISOString(), // - Usar 'fecha' en lugar de 'created_at'
         numero_factura: numFactura // Agregar número de factura de 9 dígitos
       };
 
-      console.log('💾 Creando venta:', ventaData);
-      console.log('🔍 Verificando campos de ventaData:', Object.keys(ventaData));
       
       // Asegurarse de que no haya campo 'iva'
       if ('iva' in ventaData) {
@@ -937,7 +959,7 @@ export default function AtencionPage() {
         return;
       }
 
-      console.log('✅ Venta creada exitosamente:', ventaCreada);
+   
 
       // 4. Insertar detalles de la venta (servicios)
       for (const servicioAdicional of serviciosAdicionales) {
@@ -960,11 +982,11 @@ export default function AtencionPage() {
       }
 
       // 5. Insertar detalles de la venta (productos)
-      console.log('🔍 Productos adicionales para insertar:', productosAdicionales);
+    
       for (const productoAdicional of productosAdicionales) {
         const producto = productos.find(p => p.id === productoAdicional.producto_id);
         if (producto) {
-          console.log('💾 Insertando producto:', productoAdicional);
+        
           await (supabase as any)
             .from('detalles_ventas') // ✅ Nombre correcto de la tabla
             .insert({
@@ -997,16 +1019,111 @@ export default function AtencionPage() {
         return;
       }
 
-      // 7. Limpiar localStorage
+      // 7. Calcular y registrar comisiones automáticamente (detallado por servicios)
+      if (empleado && empleado.id) {
+        
+        try {
+          // Obtener servicios principales de la cita
+          const serviciosIds = cita?.servicios_ids || [];
+          
+          // Obtener servicios adicionales de la cita
+          const { data: serviciosAdicionales, error: errorAdicionales } = await (supabase as any)
+            .from('cita_servicios_adicionales')
+            .select('servicio_id')
+            .eq('cita_id', citaId);
+          
+          const serviciosAdicionalesIds = Array.isArray(serviciosAdicionales) ? serviciosAdicionales.map(sa => sa.servicio_id) : [];
+          
+          // Combinar todos los servicios IDs
+          const todosServiciosIds = [...serviciosIds, ...serviciosAdicionalesIds];
+          
+          if (todosServiciosIds.length > 0) {
+            // Obtener todos los servicios con sus comision_porcentaje en una sola consulta
+            const { data: serviciosData, error: serviciosError } = await (supabase as any)
+              .from('servicios')
+              .select('id, nombre, precio, comision_porcentaje')
+              .in('id', todosServiciosIds);
+            
+            if (serviciosError) {
+              console.error('Error obteniendo servicios:', serviciosError);
+              return;
+            }
+            
+          
+            // Obtener porcentaje de comisión del empleado como respaldo
+            const { data: empleadoData, error: empleadoError } = await (supabase as any)
+              .from('empleados')
+              .select('porcentaje_comision')
+              .eq('id', empleado.id)
+              .single();
+            
+            const porcentajeRespaldo = empleadoError ? 50 : (empleadoData?.porcentaje_comision || 50);
+            
+            // Calcular comisiones para cada servicio
+            let montoTotalComision = 0;
+            let montoBaseServicios = 0; // Suma de precios de servicios (sin productos)
+            let detallesComision = [];
+            
+            for (const servicio of serviciosData || []) {
+              const precioServicio = parseFloat(servicio.precio) || 0;
+              const porcentajeComision = parseFloat(servicio.comision_porcentaje) || parseFloat(porcentajeRespaldo.toString()) || 50;
+              const montoComision = (precioServicio * porcentajeComision) / 100;
+              
+              // Sumar al monto base de servicios
+              montoBaseServicios += precioServicio;
+              montoTotalComision += montoComision;
+              detallesComision.push({
+                servicio_id: servicio.id,
+                servicio_nombre: servicio.nombre,
+                precio: precioServicio,
+                porcentaje_aplicado: porcentajeComision,
+                monto_comision: montoComision
+              });
+              
+            }
+            
+
+          
+            
+            // Insertar comisión única para toda la cita
+            if (montoTotalComision > 0) {
+              const comisionData = {
+                empresa_id: user?.empresa_id,
+                empleado_id: empleado.id,
+                venta_id: ventaCreada.id,
+                monto_base: montoBaseServicios, // Solo suma de servicios (sin productos)
+                porcentaje_aplicado: parseFloat((montoTotalComision / montoBaseServicios * 100).toFixed(2)), // Porcentaje ponderado exacto
+                monto_comision: montoTotalComision,
+                estado: 'pendiente',
+                created_at: new Date().toISOString()
+              };
+              
+              const { error: comisionError } = await (supabase as any)
+                .from('comisiones')
+                .insert(comisionData);
+              
+              if (comisionError) {
+                console.error('Error registrando comisión:', comisionError);
+              } else {
+              }
+            } else {
+            }
+          } else {
+          }
+        } catch (error) {
+          console.error('Error calculando comisiones detalladas:', error);
+        }
+      }
+
+      // 8. Limpiar localStorage
       localStorage.removeItem(`atencion_${citaId}`);
 
-      console.log('✅ Atención finalizada y venta creada exitosamente');
       mostrarToast('Atención finalizada y venta generada correctamente', 'success');
 
-      // 8. Abrir ticket de venta en la misma pestaña (sin nueva ventana)
+      // 9. Abrir ticket de venta en la misma pestaña (sin nueva ventana)
       setTimeout(() => {
         // Abrir ticket de venta en la misma pestaña con parámetro from
-        window.location.href = `/ventas/imprimir/${ventaCreada.id}?from=atencion`;
+        // window.location.href = `/ventas/imprimir/${ventaCreada.id}`;
         
         // Limpiar estados
         setTimeout(() => {
@@ -1476,18 +1593,8 @@ ${Number(producto?.precio_venta || 0).toFixed(2)}                              <
 
                 {/* Lista de productos */}
                 <div className="space-y-2">
-                  {(() => {
-                    console.log('🔍 Renderizando productosAdicionales:', productosAdicionales);
-                    console.log('🔍 Renderizando productos:', productos);
-                    return null;
-                  })()}
                   {productosAdicionales.map((productoAdicional) => {
                     const producto = productos.find(p => p.id === productoAdicional.producto_id);
-                    console.log('🔍 Buscando producto:', {
-                      buscando_id: productoAdicional.producto_id,
-                      productos_disponibles: productos.map(p => ({ id: p.id, nombre: p.nombre })),
-                      encontrado: producto
-                    });
                     
                     return (
                       <div key={productoAdicional.producto_id} className="flex justify-between items-center p-3 bg-gray-50 rounded">

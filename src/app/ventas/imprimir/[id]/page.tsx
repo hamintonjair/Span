@@ -4,15 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
-import { getDirectDriveUrl } from '@/utils/drive-url';
 import { Scissors } from 'lucide-react';
 
-// Función de extracción de ID robusta (override temporal para testing)
-const getDirectDriveUrlRobust = (url: string) => {
-  if (!url) return '';
-  const match = url.match(/[-\w]{25,}/); // Extrae el ID de 33 caracteres de Drive
-  const id = match ? match[0] : null;
-  return id ? `https://lh3.googleusercontent.com/d/${id}` : url;
+// Formateador de dinero con separadores de miles y decimales para ticket
+const formatTicketMoney = (amount: number) => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
 };
 
 export default function ImprimirTicketPage({ params }: { params: { id: string } }) {
@@ -53,7 +54,7 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
     if (!loading && venta && empresa) {
       // Simplemente esperar un momento y disparar impresión
       // Sin intentar precargar logo para evitar bucles
-      setTimeout(() => window.print(), 500);
+      setTimeout(() => window.print(), 600);
     }
   }, [loading, venta, empresa]);
 
@@ -145,13 +146,21 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
   };
 
   const volverAlPOS = () => {
-    // Siempre redirigir al dashboard de la empresa
-    router.push('/dashboard-empresa');
+    // Navegación dinámica basada en el parámetro ?from=
+    if (from === 'atencion') {
+      router.push('/citas/gestion');
+    } else {
+      router.push('/ventas/nueva');
+    }
   };
 
   // Determinar texto del botón
   const getButtonText = () => {
-    return 'Volver al Dashboard';
+    if (from === 'atencion') {
+      return 'Volver a Citas';
+    } else {
+      return 'Volver al POS';
+    }
   };
 
   if (loading) {
@@ -265,6 +274,17 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
             display: flex;
             justify-content: space-between;
             margin-bottom: 4px;
+          }
+          
+          .total-bold {
+            font-weight: 700;
+            font-size: 14px;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            color: #111827;
+            border: 1px solid #10b981;
           }
           
           .info-text {
@@ -435,30 +455,33 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
 
       <div className="ticket-container">
         {/* Logo y Encabezado - Centrado */}
-        <div className="text-center mb-6">
-          <div className="mb-4">
-            {/* Mostrar logo solo si existe y no hay error */}
-            {empresa?.logo_url && !hasLogoError ? (
-              <img 
-                src={getDirectDriveUrlRobust(empresa.logo_url || '')} 
-                alt="Logo Empresa" 
-                className="mx-auto h-auto max-h-[80px] w-auto object-contain mb-2"
-                crossOrigin="anonymous"
-                onError={() => setHasLogoError(true)}
-              />
-            ) : (
-              <div 
-                className="mx-auto h-auto max-h-[80px] w-auto flex items-center justify-center mb-2"
-              >
-                <div className="text-center">
-                  <Scissors className="w-8 h-8 text-gray-700 mb-2 mx-auto" />
-                  <div className="text-2xl font-bold text-gray-800 mb-1">BEAUTYPRO</div>
-                  <div className="text-sm text-gray-600">Sistema de Gestión</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+       {/* Logo y Encabezado - Centrado */}
+       
+       {/* Logo y Encabezado */}
+<div className="text-center mb-4">
+  {/* Validamos que haya un logo Base64 Y que no hayamos tenido error previo */}
+  {empresa?.logo_url && empresa.logo_url.startsWith('data:image/') && !hasLogoError ? (
+    <img 
+      src={empresa.logo_url} 
+      alt="Logo" 
+      className="mx-auto h-auto max-h-[80px] w-auto object-contain mb-2"
+      onError={() => {
+        console.log("Error cargando logo Base64, activando fallback de texto");
+        setHasLogoError(true);
+      }}
+    />
+  ) : (
+    <div className="py-4 border-2 border-dashed border-gray-200 rounded-lg mb-2">
+      <Scissors className="w-8 h-8 text-gray-700 mb-1 mx-auto" />
+      <div className="text-2xl font-black text-gray-900 tracking-tighter">
+        BEAUTYPRO
+      </div>
+      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+        Professional Hair Studio
+      </div>
+    </div>
+  )}
+</div>
         
         {/* Datos de Empresa - Centrados */}
         <div className="company-info">
@@ -476,6 +499,7 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
         <div className="info-text">Fecha: {new Date(venta.fecha).toLocaleString('es-CO')}</div>
         <div className="info-text">Cliente: {venta.clientes?.nombre}</div>
         <div className="info-text">Cédula: {venta.clientes?.cedula}</div>
+        <div className="info-text">Vendedor: {user?.nombre || 'Sistema'}</div>
         
         <div className="divider"></div>
         
@@ -493,39 +517,31 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
               {detalle.productos?.nombre || detalle.servicios?.nombre || 'Item'}
             </span>
             <span className="product-qty">{detalle.cantidad}</span>
-            <span className="product-price">${(detalle.precio_unitario || 0).toFixed(2)}</span>
+            <span className="product-price">{formatTicketMoney(detalle.precio_unitario || 0)}</span>
           </div>
         ))}
-        
-        {/* Fila de totales por producto */}
-        {/* {venta.detalles_ventas?.map((detalle: any, index: number) => (
-          <div key={`total-${index}`} className="product-row font-semibold">
-            <span className="product-name text-gray-600">Total {detalle.productos?.nombre || detalle.servicios?.nombre || 'Item'}:</span>
-            <span className="product-qty"></span>
-            <span className="product-price">${((detalle.cantidad || 0) * (detalle.precio_unitario || 0)).toFixed(2)}</span>
-          </div>
-        ))} */}
+  
         
         <div className="divider"></div>
         
         {/* Totales */}
         <div className="totals-row">
           <span>Subtotal:</span>
-          <span>${Math.round(venta.subtotal).toLocaleString('es-CO')}</span>
+          <span>{formatTicketMoney(venta.subtotal || 0)}</span>
         </div>
         <div className="totals-row">
           <span>IVA:</span>
-          <span>${Math.round(venta.impuestos || 0).toLocaleString('es-CO')}</span>
+          <span>{formatTicketMoney(venta.impuestos || 0)}</span>
         </div>
         {venta.descuentos > 0 && (
           <div className="totals-row">
             <span>Descuento:</span>
-            <span>-${(venta.descuentos || 0).toFixed(2)}</span>
+            <span>-{formatTicketMoney(venta.descuentos || 0)}</span>
           </div>
         )}
         <div className="totals-row total-bold">
           <span>TOTAL A PAGAR:</span>
-          <span>${Math.round(venta.total).toLocaleString('es-CO')}</span>
+          <span>{formatTicketMoney(venta.total || 0)}</span>
         </div>
         
         <div className="divider"></div>

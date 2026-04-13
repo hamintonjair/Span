@@ -6,6 +6,16 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { MagnifyingGlassIcon, PlusIcon, MinusIcon, TrashIcon, UserIcon, CreditCardIcon, BanknotesIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
+// Formateador de dinero para Colombia
+const formatMoney = (amount: number) => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 // Hook de Toast personalizado
 const useToast = () => {
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' }>>([]);
@@ -137,6 +147,7 @@ export default function VentasNuevaPage() {
 
       setCajaAbierta(cajaData);
       console.log('✅ Estado de cajaAbierta actualizado a:', cajaData);
+      
 
       // Si no hay caja abierta, mostrar modal elegante
       if (!cajaData) {
@@ -349,22 +360,28 @@ export default function VentasNuevaPage() {
       console.log('🔢 Número de factura generado:', numFactura);
     
       // Insertar venta principal
+     
+      
+      const ventaParaInsertar = {
+        empresa_id: user?.empresa_id,
+        cliente_id: clienteSeleccionado.id, // ← UUID DEL CLIENTE SELECCIONADO
+        vendedor_id: user?.id, // ← USUARIO DEL SISTEMA LOGUEADO QUE VENDE
+        caja_id: cajaAbierta?.id, // ← ID DE CAJA ABIERTA
+        subtotal: parseFloat(subtotal.toString()), // ← ASEGURAR NUMÉRICO
+        total: parseFloat(total.toString()), // ← ASEGURAR NUMÉRICO
+        metodo_pago: metodoPago,
+        impuestos: parseFloat(impuestos.toString()), // ← ASEGURAR NUMÉRICO
+        descuentos: parseFloat(descuentos.toString()), // ← ASEGURAR NUMÉRICO
+        estado: 'completada',
+        fecha: new Date().toISOString(),
+        numero_factura: numFactura // Agregar número de factura
+      };
+      
+      console.log('Venta a insertar:', ventaParaInsertar);
+      
       const { data: ventaData, error: ventaError } = await supabase
         .from('ventas')
-        .insert({
-          empresa_id: user?.empresa_id,
-          cliente_id: clienteSeleccionado.id, // ← UUID DEL CLIENTE SELECCIONADO
-          empleado_id: null, // ← SIN EMPLEADO - VENTA DIRECTA
-          caja_id: cajaAbierta?.id, // ← ID DE CAJA ABIERTA
-          subtotal: parseFloat(subtotal.toString()), // ← ASEGURAR NUMÉRICO
-          total: parseFloat(total.toString()), // ← ASEGURAR NUMÉRICO
-          metodo_pago: metodoPago,
-          impuestos: parseFloat(impuestos.toString()), // ← ASEGURAR NUMÉRICO
-          descuentos: parseFloat(descuentos.toString()), // ← ASEGURAR NUMÉRICO
-          estado: 'completada',
-          fecha: new Date().toISOString(),
-          numero_factura: numFactura // Agregar número de factura
-        } as any)
+        .insert(ventaParaInsertar as any)
         .select()
         .single();
 
@@ -572,7 +589,7 @@ export default function VentasNuevaPage() {
                     </div>
                     {/* PRECIO REAL - SIEMPRE MAYOR A 0 */}
                     <div className="text-lg font-bold text-green-600">
-                      ${producto.precio_venta.toFixed(2)}
+                      {formatMoney(producto.precio_venta)}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Stock: <span className={`font-semibold ${producto.stock <= 5 ? 'text-red-600' : 'text-green-600'}`}>
@@ -670,7 +687,7 @@ export default function VentasNuevaPage() {
                           </div>
                           {/* PRECIO UNITARIO CORRECTO */}
                           <div className="text-sm text-gray-500">
-                            ${item.precio_unitario.toFixed(2)} c/u
+                            {formatMoney(item.precio_unitario)} c/u
                           </div>
                         </div>
                         <button
@@ -700,10 +717,10 @@ export default function VentasNuevaPage() {
 
                         <div className="text-right">
                           <div className="font-medium text-gray-900">
-                            ${item.subtotal.toFixed(2)}
+                            {formatMoney(item.subtotal)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            IVA: ${item.impuesto_item.toFixed(2)}
+                            IVA: {formatMoney(item.impuesto_item)}
                           </div>
                         </div>
                       </div>
@@ -718,11 +735,11 @@ export default function VentasNuevaPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Impuestos (IVA):</span>
-                  <span>${impuestos.toFixed(2)}</span>
+                  <span>{formatMoney(impuestos)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Descuentos:</span>
@@ -735,7 +752,7 @@ export default function VentasNuevaPage() {
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatMoney(total)}</span>
                 </div>
               </div>
 
@@ -786,15 +803,15 @@ export default function VentasNuevaPage() {
                     />
                     {cambio > 0 && (
                       <div className="mt-2 text-sm text-green-600">
-                        Cambio: ${cambio.toFixed(2)}
+                        Cambio: {formatMoney(cambio)}
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex justify-between text-lg font-bold">
+                <div className="flex justify-between text-xl font-black text-green-600">
                   <span>Total a Pagar:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatMoney(total)}</span>
                 </div>
               </div>
 

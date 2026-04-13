@@ -134,17 +134,16 @@ const Switch = ({
 );
 
 // Componente Dialog temporal
-const Dialog = ({ open, onOpenChange, children }: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
+const Dialog = ({ children, open, onOpenChange }: { 
   children: React.ReactNode; 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
 }) => {
   if (!open) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
-      <div className="relative bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {children}
       </div>
     </div>
@@ -159,8 +158,8 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => (
   <div className="mb-4">{children}</div>
 );
 
-const DialogTitle = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="text-lg font-semibold text-gray-900">{children}</h2>
+const DialogTitle = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <h2 className={`text-lg font-semibold text-gray-900 ${className}`}>{children}</h2>
 );
 
 const DialogDescription = ({ children }: { children: React.ReactNode }) => (

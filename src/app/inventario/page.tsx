@@ -353,7 +353,7 @@ export default function InventarioPage() {
       // Guardar movimiento en historial
       const movimientoData = {
         producto_id: productoSeleccionado.id,
-        tipo_movimiento: formData.tipo === 'Entrada' ? 'Entrada' : 'Salida', // Primera letra mayúscula
+        tipo_movimiento: formData.tipo === 'Entrada' ? 'entrada' : 'salida', // Valores en minúsculas según constraint
         cantidad: cantidadAjuste,
         stock_anterior: productoSeleccionado.stock,
         stock_nuevo: nuevoStock,

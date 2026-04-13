@@ -18,6 +18,8 @@ export default function CajaPage() {
   const [showModalApertura, setShowModalApertura] = useState(false);
   const [showModalCierre, setShowModalCierre] = useState(false);
   const [montoCierre, setMontoCierre] = useState('');
+  const [efectivoReal, setEfectivoReal] = useState('');
+  const [diferencia, setDiferencia] = useState(0);
   const [ventasAcumuladas, setVentasAcumuladas] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isClosingCaja, setIsClosingCaja] = useState(false);
@@ -27,6 +29,16 @@ export default function CajaPage() {
   const [showVistaDetalle, setShowVistaDetalle] = useState(false);
   const [ventasTurno, setVentasTurno] = useState<any[]>([]);
   const [citasTurno, setCitasTurno] = useState<any[]>([]);
+  // Estado para ingresos del turno
+  const [ingresosTurno, setIngresosTurno] = useState<{
+    ingresosPOS: number;
+    ingresosCitas: number;
+    recaudoPrestamos: number;
+    recaudoTransferencias: number;
+    egresosPrestamos: number;
+    totalGeneral: number;
+  }>({ ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 });
+  const [comisionesTurno, setComisionesTurno] = useState<any[]>([]);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Paginación para historial de cierres
@@ -39,9 +51,30 @@ export default function CajaPage() {
     setCurrentPage(Math.floor(itemOffset / itemsPerPage) + 1);
   }, [itemOffset, itemsPerPage]);
 
+  // Actualizar ingresos en tiempo real cuando la caja está abierta
+  useEffect(() => {
+    if (cajaActual && cajaActual.id) {
+      const actualizarIngresos = async () => {
+        try {
+          const ingresos = await obtenerIngresosTurno(cajaActual.id);
+          setIngresosTurno(ingresos);
+          setVentasAcumuladas(ingresos.totalGeneral);
+        } catch (error) {
+          console.error('Error actualizando ingresos:', error);
+        }
+      };
+
+      actualizarIngresos();
+      
+      // Actualizar cada 30 segundos para mantener datos en tiempo real
+      const interval = setInterval(actualizarIngresos, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [cajaActual]);
+
   // Datos para mostrar en tabla
-  const endOffset = itemOffset + itemsPerPage - 1;
-  const currentCierres = historialCierres.slice(itemOffset, endOffset + 1);
+  const currentCierres = historialCierres.slice(itemOffset, itemOffset + itemsPerPage);
   const pageCount = Math.ceil(historialCierres.length / itemsPerPage);
 
   // Formateador de dinero para Colombia
@@ -80,12 +113,182 @@ export default function CajaPage() {
     }
   };
 
-  // Función para obtener ventas del turno
-  const obtenerVentasTurno = async (cajaId: string) => {
+  // Función para obtener ingresos del turno (ventas + préstamos)
+  const obtenerIngresosTurno = async (cajaId: string) => {
     try {
-      console.log('🔍 Obteniendo ventas para caja_id:', cajaId);
+      console.log('Calculando ingresos desde tabla ventas para caja_id:', cajaId);
       
-      // Primero obtener ventas básicas
+      // Obtener información de la caja para obtener fecha_apertura
+      const { data: cajaData, error: cajaError } = await supabase
+        .from('cajas')
+        .select('fecha_apertura, empresa_id')
+        .eq('id', cajaId)
+        .single() as any;
+      
+      if (cajaError || !cajaData) {
+        console.error('Error obteniendo información de caja:', cajaError);
+        return { ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 };
+      }
+      
+      console.log('Información de caja:', cajaData);
+      
+      // Convertir fecha de apertura a formato ISO para asegurar comparación correcta
+      const fechaAperturaISO = new Date(cajaData.fecha_apertura).toISOString();
+      console.log('Fecha apertura ISO:', fechaAperturaISO);
+      
+      // 1. Consultar ventas
+      const { data: ventasData, error: ventasError } = await supabase
+        .from('ventas')
+        .select('total, cita_id, created_at')
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .gte('created_at', fechaAperturaISO) // Usar formato ISO para evitar problemas de zona horaria
+        .order('created_at', { ascending: false }) as any;
+      
+      if (ventasError) {
+        console.error('Error obteniendo ventas:', ventasError);
+        return { ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 };
+      }
+      
+      console.log('Ventas encontradas:', ventasData?.length || 0);
+      
+      // Clasificar ventas: POS vs Citas
+      const ventasPOS = ventasData?.filter((venta: any) => !venta.cita_id) || [];
+      const ventasCitas = ventasData?.filter((venta: any) => venta.cita_id) || [];
+      
+      // Calcular totales de ventas
+      const totalVentasPOS = ventasPOS.reduce((sum: number, venta: any) => sum + (venta.total || 0), 0);
+      const totalVentasCitas = ventasCitas.reduce((sum: number, venta: any) => sum + (venta.total || 0), 0);
+      
+      // 2. Consultar recaudo de préstamos desde movimientos_caja (usando metodo_pago explícito)
+      console.log('Buscando recaudo de préstamos para caja_id:', cajaId);
+      console.log('Categoría exacta: "Abono Préstamo"');
+      console.log('Filtrando por metodo_pago = "efectivo" (columna explícita)');
+      
+      // Consulta para abonos en efectivo
+      const { data: movimientosEfectivo, error: efectivoError } = await supabase
+        .from('movimientos_caja')
+        .select('monto, categoria, tipo, metodo_pago')
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .eq('categoria', 'Abono Préstamo') // Categoría exacta con tilde
+        .eq('tipo', 'entrada')
+        .eq('metodo_pago', 'efectivo') // Filtrar por columna explícita
+        .gte('fecha', fechaAperturaISO) as any;
+      
+      // Consulta para abonos en transferencia
+      const { data: movimientosTransferencia, error: transferenciaError } = await supabase
+        .from('movimientos_caja')
+        .select('monto, categoria, tipo, metodo_pago')
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .eq('categoria', 'Abono Préstamo') // Categoría exacta con tilde
+        .eq('tipo', 'entrada')
+        .eq('metodo_pago', 'transferencia') // Filtrar por columna explícita
+        .gte('fecha', fechaAperturaISO) as any;
+
+      
+      let totalRecaudoPrestamos = 0;
+      let totalRecaudoTransferencias = 0;
+      
+      // Calcular recaudos en efectivo
+      if (efectivoError) {
+        console.warn('Error obteniendo movimientos en efectivo:', efectivoError);
+      } else {
+        totalRecaudoPrestamos = movimientosEfectivo?.reduce((sum: number, movimiento: any) => sum + (movimiento.monto || 0), 0) || 0;
+
+      }
+      
+      // Calcular recaudos en transferencia
+      if (transferenciaError) {
+        console.warn('Error obteniendo movimientos en transferencia:', transferenciaError);
+      } else {
+        totalRecaudoTransferencias = movimientosTransferencia?.reduce((sum: number, movimiento: any) => sum + (movimiento.monto || 0), 0) || 0;
+    
+      }
+      
+      console.log('TOTALES FINALES:');
+      console.log('Efectivo:', totalRecaudoPrestamos);
+      console.log('Transferencia:', totalRecaudoTransferencias);
+
+      // 3. Consultar egresos por préstamos desde movimientos_caja
+      console.log('Buscando egresos de préstamos para caja_id:', cajaId);
+      console.log('Fecha apertura ISO:', fechaAperturaISO);
+      console.log('Categoría exacta: "Préstamo Entregado"');
+      
+      const { data: egresosData, error: egresosError } = await supabase
+        .from('movimientos_caja')
+        .select('monto, fecha, categoria, tipo')
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .eq('categoria', 'Préstamo Entregado') // Categoría exacta con tilde
+        .eq('tipo', 'salida')
+        .gte('fecha', fechaAperturaISO) as any;
+      
+      console.log('Egresos encontrados:', egresosData);
+      console.log('Error egresos:', egresosError);
+      
+      let totalEgresosPrestamos = 0;
+      if (egresosError) {
+        console.warn('Error obteniendo egresos de préstamos:', egresosError);
+      } else {
+        totalEgresosPrestamos = egresosData?.reduce((sum: number, movimiento: any) => sum + (movimiento.monto || 0), 0) || 0;
+        console.log('Egresos de préstamos encontrados:', totalEgresosPrestamos);
+      }
+      
+      // Calcular total general (ingresos - egresos)
+      const totalGeneral = totalVentasPOS + totalVentasCitas + totalRecaudoPrestamos - totalEgresosPrestamos;
+      
+      console.log('Desglose de ingresos completo:', {
+        totalVentas: ventasData?.length || 0,
+        ventasPOS: ventasPOS.length,
+        ventasCitas: ventasCitas.length,
+        totalVentasPOS,
+        totalVentasCitas,
+        totalRecaudoPrestamos,
+        totalEgresosPrestamos,
+        totalGeneral
+      });
+      
+      return {
+        ingresosPOS: totalVentasPOS,
+        ingresosCitas: totalVentasCitas,
+        recaudoPrestamos: totalRecaudoPrestamos,
+        recaudoTransferencias: totalRecaudoTransferencias,
+        egresosPrestamos: totalEgresosPrestamos,
+        totalGeneral: totalGeneral
+      };
+      
+    } catch (error) {
+      console.error('Error en obtenerIngresosTurno:', error);
+      return { ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 };
+    }
+  };
+
+  // Función para obtener ventas detalladas del turno
+  const obtenerVentasDetalladasTurno = async (cajaId: string) => {
+    try {
+      console.log('Obteniendo ventas detalladas para caja_id:', cajaId);
+      
+      // Obtener información de la caja para obtener fecha_apertura
+      const { data: cajaData, error: cajaError } = await supabase
+        .from('cajas')
+        .select('fecha_apertura, empresa_id')
+        .eq('id', cajaId)
+        .single() as any;
+      
+      if (cajaError || !cajaData) {
+        console.error('Error obteniendo información de caja:', cajaError);
+        return [];
+      }
+      
+      console.log('Información de caja:', cajaData);
+      
+      // Convertir fecha de apertura a formato ISO para asegurar comparación correcta
+      const fechaAperturaISO = new Date(cajaData.fecha_apertura).toISOString();
+      console.log('Fecha apertura ISO:', fechaAperturaISO);
+      
+      // Consultar ventas con detalles completos
       const { data: ventasData, error: ventasError } = await supabase
         .from('ventas')
         .select(`
@@ -93,70 +296,99 @@ export default function CajaPage() {
           total,
           metodo_pago,
           created_at,
-          cliente:clientes!cliente_id(nombre)
+          cita_id,
+          cliente:clientes!cliente_id(nombre),
+          detalles_ventas(
+            id,
+            cantidad,
+            precio_unitario,
+            subtotal,
+            producto:productos!producto_id(nombre),
+            servicio:servicios!servicio_id(nombre)
+          )
         `)
         .eq('caja_id', cajaId)
-        .order('created_at', { ascending: false });
-
-      console.log('📦 Resultado ventas básicas:', { ventasData, ventasError });
-
+        .eq('empresa_id', cajaData.empresa_id)
+        .gte('created_at', fechaAperturaISO)
+        .order('created_at', { ascending: false }) as any;
+      
       if (ventasError) {
-        console.error('❌ Error obteniendo ventas básicas:', ventasError);
+        console.error('Error obteniendo ventas detalladas:', ventasError);
         return [];
       }
-
-      if (!ventasData || ventasData.length === 0) {
-        console.log('✅ No hay ventas para este turno');
-        return [];
-      }
-
-      // Ahora obtener detalles usando detalles_ventas
-      const ventaIds = (ventasData as any[]).map(venta => venta.id);
-      console.log('🔍 Buscando detalles para ventas:', ventaIds);
-
-      const { data: detallesData, error: detallesError } = await supabase
-        .from('detalles_ventas')
-        .select(`
-          id,
-          venta_id,
-          cantidad,
-          precio_unitario,
-          producto:productos!producto_id(nombre)
-        `)
-        .in('venta_id', ventaIds);
-
-      console.log('📦 Resultado detalles:', { detallesData, detallesError });
-
-      if (detallesError) {
-        console.error('❌ Error obteniendo detalles:', detallesError);
-        // Devolver ventas sin detalles
-        return ventasData;
-      }
-
-      // Crear mapa de detalles por venta_id
-      const detallesMap: { [key: string]: any[] } = {};
-      (detallesData as any[])?.forEach(detalle => {
-        if (!detallesMap[detalle.venta_id]) {
-          detallesMap[detalle.venta_id] = [];
-        }
-        detallesMap[detalle.venta_id].push(detalle);
-      });
-
-      // Enriquecer ventas con sus detalles
-      const ventasConDetalles = (ventasData as any[]).map(venta => ({
-        ...venta,
-        items: detallesMap[venta.id] || []
-      }));
-
-      console.log('✅ Ventas con detalles:', ventasConDetalles.length);
-      return ventasConDetalles;
+      
+      console.log('Ventas detalladas encontradas:', ventasData?.length || 0);
+      
+      return ventasData || [];
+      
     } catch (error) {
-      console.error('❌ Error en obtenerVentasTurno:', error);
+      console.error('Error en obtenerVentasDetalladasTurno:', error);
       return [];
     }
   };
-
-  // Función para obtener citas del turno
+  const obtenerComisionesTurno = async (cajaId: string) => {
+    try {
+      console.log('Obteniendo comisiones para caja_id:', cajaId);
+      
+      // Obtener información de la caja para obtener fecha_apertura
+      const { data: cajaData, error: cajaError } = await supabase
+        .from('cajas')
+        .select('fecha_apertura, empresa_id')
+        .eq('id', cajaId)
+        .single() as any;
+      
+      if (cajaError || !cajaData) {
+        console.error('Error obteniendo información de caja:', cajaError);
+        return [];
+      }
+      
+      // Consultar ventas con comisiones (solo campos que existen en la tabla)
+      const { data: ventasConComision, error: comisionError } = await supabase
+        .from('ventas')
+        .select(`
+          id,
+          total,
+          created_at,
+          cliente:clientes!cliente_id(nombre)
+        `)
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .gte('created_at', cajaData.fecha_apertura)
+        .order('created_at', { ascending: false }) as any;
+      
+      if (comisionError) {
+        console.error('Error obteniendo comisiones:', comisionError);
+        return [];
+      }
+      
+      // Agrupar ventas por cliente (ya que vendedor_nombre no existe)
+      const comisionesPorEmpleado: { [key: string]: any } = {};
+      
+      ventasConComision?.forEach((venta: any) => {
+        const nombreCliente = venta.cliente?.nombre || 'Cliente sin nombre';
+        
+        if (!comisionesPorEmpleado[nombreCliente]) {
+          comisionesPorEmpleado[nombreCliente] = {
+            nombre: nombreCliente,
+            totalComisiones: 0, // Por ahora en 0 hasta que se agreguen campos de comisión
+            cantidadVentas: 0,
+            totalVentas: 0,
+            ventas: []
+          };
+        }
+        
+        comisionesPorEmpleado[nombreCliente].cantidadVentas += 1;
+        comisionesPorEmpleado[nombreCliente].totalVentas += venta.total || 0;
+        comisionesPorEmpleado[nombreCliente].ventas.push(venta);
+      });
+      
+      return Object.values(comisionesPorEmpleado);
+      
+    } catch (error) {
+      console.error('Error en obtenerComisionesTurno:', error);
+      return [];
+    }
+  };
   const obtenerCitasTurno = async (cajaId: string) => {
     try {
       console.log('🔍 Obteniendo citas para caja_id:', cajaId);
@@ -309,6 +541,46 @@ export default function CajaPage() {
       cargarHistorialCierres();
     }
   }, [user?.empresa_id]);
+
+  // Escuchar eventos de préstamos creados para refrescar estado de caja
+  useEffect(() => {
+    const handlePrestamoCreado = (event: any) => {
+      console.log('📢 Evento de préstamo creado recibido:', event.detail);
+      if (cajaActual && event.detail?.cajaId === cajaActual.id) {
+        console.log('🔄 Refrescando estado de caja por préstamo creado...');
+        buscarCajaActual();
+      }
+    };
+
+    window.addEventListener('prestamoCreado', handlePrestamoCreado);
+    
+    return () => {
+      window.removeEventListener('prestamoCreado', handlePrestamoCreado);
+    };
+  }, [cajaActual]);
+
+  // Función para calcular efectivo esperado y diferencia
+  const calcularEfectivoEsperado = () => {
+    if (!cajaActual) return 0;
+    
+    const montoAperturaNum = cajaActual.monto_apertura || 0;
+    const totalVentasNum = ingresosTurno.ingresosPOS + ingresosTurno.ingresosCitas;
+    const recaudoPrestamosNum = ingresosTurno.recaudoPrestamos;
+    const egresosPrestamosNum = ingresosTurno.egresosPrestamos || 0;
+    
+    // Efectivo Esperado = Monto Apertura + Ventas Efectivo + Recaudo Préstamos - Egresos Préstamos
+    const efectivoEsperado = montoAperturaNum + totalVentasNum + recaudoPrestamosNum - egresosPrestamosNum;
+    
+    return efectivoEsperado;
+  };
+
+  // Efecto para calcular diferencia cuando cambia el efectivo real
+  useEffect(() => {
+    const efectivoEsperado = calcularEfectivoEsperado();
+    const efectivoRealNum = parseFloat(efectivoReal) || 0;
+    const diferenciaCalculada = efectivoRealNum - efectivoEsperado;
+    setDiferencia(diferenciaCalculada);
+  }, [efectivoReal, ingresosTurno, cajaActual]);
 
   // Función para mostrar toasts
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -473,8 +745,8 @@ export default function CajaPage() {
   };
 
   const cerrarCaja = async () => {
-    if (!montoCierre || parseFloat(montoCierre) < 0) {
-      showToast('error', 'Por favor ingrese el monto de cierre físico');
+    if (!efectivoReal || parseFloat(efectivoReal) < 0) {
+      showToast('error', 'Por favor ingrese el efectivo real');
       return;
     }
 
@@ -487,82 +759,23 @@ export default function CajaPage() {
       }
 
       // Calcular valores
-      const montoEsperado = (cajaActual?.monto_apertura || 0) + (ventasAcumuladas || 0);
+      const efectivoEsperado = calcularEfectivoEsperado();
+      const montoCierreNum = parseFloat(efectivoReal) || 0;
       
       console.log('🔍 Cerrando caja con ID:', cajaActual.id);
-      console.log('💰 Monto físico:', parseFloat(montoCierre));
-      console.log('💰 Monto esperado:', montoEsperado);
-      console.log('📊 Ventas acumuladas:', ventasAcumuladas);
-      console.log('🏦 Monto apertura desde BD:', cajaActual?.monto_apertura);
-      
-      // Depuración: Asegurar que el UUID no tenga espacios o caracteres extraños
-      console.log('Fila encontrada para actualizar:', cajaActual.id);
-      
-      // VERIFICACIÓN DIRECTA: Buscar la fila antes de actualizar
-      console.log('🔍 Verificando si la fila existe en BD...');
-      const { data: filaExistente, error: errorBusqueda } = await (supabase as any)
-        .from('cajas')
-        .select('*')
-        .eq('id', cajaActual.id)
-        .single();
-      
-      if (errorBusqueda) {
-        console.error('❌ Error buscando fila:', errorBusqueda);
-        console.error('❌ Código:', errorBusqueda.code);
-        console.error('❌ Mensaje:', errorBusqueda.message);
-        throw new Error(`No se puede encontrar la fila: ${errorBusqueda.message}`);
-      }
-      
-      if (!filaExistente) {
-        console.error('❌ CRÍTICO: La fila no existe en la tabla');
-        console.error('❌ ID buscado:', cajaActual.id);
-        throw new Error('La caja no existe en la base de datos');
-      }
-      
-      console.log('✅ Fila encontrada:', filaExistente);
-      console.log('🔄 Procediendo con el update...');
-      
-      // Verificación previa: mostrar el estado actual
-      console.log('📊 Estado ANTES del update:', {
-        id: cajaActual.id,
-        estado: filaExistente.estado,
-        monto_cierre: filaExistente.monto_cierre,
-        fecha_cierre: filaExistente.fecha_cierre,
-        monto_esperado: filaExistente.monto_esperado
-      });
-      
-      // Intento 1: Update estándar optimizado para RLS
-      console.log('🔧 Ejecutando update con estos valores:');
-      console.log('  - estado: cerrada');
-      console.log('  - monto_cierre:', Number(montoCierre));
-      console.log('  - fecha_cierre:', new Date().toISOString());
-      console.log('  - monto_esperado:', Number(montoEsperado));
-      console.log('  - WHERE id:', cajaActual.id);
-      console.log('  - WHERE empresa_id:', user?.empresa_id);
-      console.log('  - WHERE vendedor_id:', user?.id);
-      
-      // Limpieza de Nulos: Asegurar que cajaActual.id no sea null
-      if (!cajaActual?.id) {
-        console.error('❌ cajaActual.id es null');
-        throw new Error('ID de caja no disponible');
-      }
-      
-      // Debug: Mostrar datos del usuario para RLS
-      console.log('👤 Datos del usuario para RLS:', {
-        id: user?.id,
-        empresa_id: user?.empresa_id,
-        rol: user?.rol
-      });
+      console.log('💰 Efectivo Real:', montoCierreNum);
+      console.log('� Efectivo Esperado:', efectivoEsperado);
+      console.log('📊 Diferencia:', montoCierreNum - efectivoEsperado);
       
       // Usar RPC administrativo con SERVICE ROLE para bypass completo de RLS
-      console.log('🚀 Usando RPC administrativo para bypass RLS...');
+      console.log('🚀 Usando RPC administrativo para cerrar caja...');
       
       const { error } = await (supabase as any).rpc('admin_cerrar_caja', {
         p_caja_id: cajaActual.id,
         p_fecha_cierre: new Date().toISOString(),
-        p_monto_cierre: Number(montoCierre),
-        p_monto_esperado: Number(montoEsperado),
-        p_cerrado_por: user?.id  // Trazabilidad: ID del admin que cierra
+        p_monto_cierre: montoCierreNum, // Usar efectivoReal como monto_cierre
+        p_monto_esperado: efectivoEsperado,
+        p_cerrado_por: user?.id
       });
       
       console.log('📦 Resultado del RPC administrativo:', { error });
@@ -578,6 +791,8 @@ export default function CajaPage() {
         // Limpiar estados y mostrar historial
         console.log('🧹 Limpiando estados y activando vista de historial...');
         setMontoCierre('');
+        setEfectivoReal(''); // Limpiar efectivo real
+        setDiferencia(0);
         setShowModalCierre(false);
         
         // Recargar historial para mostrar el cierre recién agregado
@@ -676,6 +891,92 @@ export default function CajaPage() {
                                     <p className="font-semibold text-blue-600 text-lg">{formatMoney((cajaActual?.monto_apertura || 0) + ventasAcumuladas)}</p>
                                 </div>
                             </div>
+                            
+                            {/* Desglose de Ingresos en Tiempo Real */}
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Desglose de Ingresos</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                            </svg>
+                                            <span className="text-xs font-medium text-green-700">POS</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-green-800">{formatMoney(ingresosTurno.ingresosPOS)}</p>
+                                        <p className="text-xs text-green-600 mt-1">Ventas directas</p>
+                                    </div>
+                                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <span className="text-xs font-medium text-blue-700">Citas</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-blue-800">{formatMoney(ingresosTurno.ingresosCitas)}</p>
+                                        <p className="text-xs text-blue-600 mt-1">Servicios y productos</p>
+                                    </div>
+                                    <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border border-amber-200">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span className="text-xs font-medium text-amber-700">Recaudo Préstamos</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-amber-800">{formatMoney(ingresosTurno.recaudoPrestamos)}</p>
+                                        <p className="text-xs text-amber-600 mt-1">Abonos en efectivo</p>
+                                    </div>
+                                    {ingresosTurno.recaudoTransferencias > 0 && (
+                                        <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
+                                            <div className="flex items-center space-x-2 mb-1">
+                                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                                                </svg>
+                                                <span className="text-xs font-medium text-purple-700">Abonos en Banco</span>
+                                            </div>
+                                            <p className="text-lg font-bold text-purple-800">{formatMoney(ingresosTurno.recaudoTransferencias)}</p>
+                                            <p className="text-xs text-purple-600 mt-1">No afectan caja</p>
+                                        </div>
+                                    )}
+                                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M12 14h.01M15 11h.01M12 14h.01M9 17h.01M12 14h.01" />
+                                            </svg>
+                                            <span className="text-xs font-medium text-purple-700">Total Ventas</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-purple-800">{formatMoney(ingresosTurno.ingresosPOS + ingresosTurno.ingresosCitas)}</p>
+                                        <p className="text-xs text-purple-600 mt-1">POS + Citas</p>
+                                    </div>
+                                    <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border border-red-200">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                                            </svg>
+                                            <span className="text-xs font-medium text-red-700">Egresos Préstamos</span>
+                                        </div>
+                                        <p className="text-lg font-bold text-red-800">{formatMoney(ingresosTurno.egresosPrestamos || 0)}</p>
+                                        <p className="text-xs text-red-600 mt-1">Préstamos entregados</p>
+                                    </div>
+                                </div>
+                                
+                                {/* Efectivo Esperado */}
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h5 className="text-sm font-medium text-indigo-700">Efectivo Esperado</h5>
+                                                <p className="text-xs text-indigo-600 mt-1">
+                                                    {formatMoney(cajaActual?.monto_apertura || 0)} (apertura) + {formatMoney(ingresosTurno.ingresosPOS + ingresosTurno.ingresosCitas)} (ventas) + {formatMoney(ingresosTurno.recaudoPrestamos)} (recaudo) - {formatMoney(ingresosTurno.egresosPrestamos || 0)} (egresos)
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-indigo-800">{formatMoney(calcularEfectivoEsperado())}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <button
@@ -751,7 +1052,7 @@ export default function CajaPage() {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Cierre</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Apertura y Cierre</th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendedor</th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto Cierre</th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto Esperado</th>
@@ -765,7 +1066,12 @@ export default function CajaPage() {
                                 return (
                                     <tr key={caja.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                            {new Date(caja.fecha_cierre).toLocaleString('es-CO')}
+                                            <div className="space-y-1">
+                                                <div className="text-xs text-gray-500">Apertura:</div>
+                                                <div>{new Date(caja.fecha_apertura).toLocaleString('es-CO')}</div>
+                                                <div className="text-xs text-gray-500 mt-1">Cierre:</div>
+                                                <div>{new Date(caja.fecha_cierre).toLocaleString('es-CO')}</div>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                             {caja.vendedor_nombre || 'N/A'}
@@ -793,32 +1099,61 @@ export default function CajaPage() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm">
-                                            <button
-                                                onClick={async () => {
-                                                    console.log('🔍 Click en detalles para caja:', caja.id);
-                                                    setCajaSeleccionada(caja);
-                                                    setShowVistaDetalle(true);
-                                                    
-                                                    try {
-                                                        console.log('🚀 Cargando datos del turno...');
-                                                        // Cargar ventas del turno
-                                                        const [ventas, citas] = await Promise.all([
-                                                            obtenerVentasTurno(caja.id),
-                                                            obtenerCitasTurno(caja.id)
-                                                        ]);
+                                            <div className="flex space-x-2">
+                                                <button
+                                                    onClick={async () => {
+                                                        console.log('🔍 Click en detalles para caja:', caja.id);
+                                                        setCajaSeleccionada(caja);
+                                                        setShowVistaDetalle(true);
                                                         
-                                                        console.log('📊 Datos cargados:', { ventas: ventas.length, citas: citas.length });
-                                                        setVentasTurno(ventas);
-                                                        setCitasTurno(citas);
-                                                    } catch (error) {
-                                                        console.error('❌ Error cargando datos del turno:', error);
-                                                    }
-                                                }}
-                                                className="text-blue-600 hover:text-blue-800 transition-colors"
-                                                title="Ver detalles completos"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
+                                                        try {
+                                                            console.log('🚀 Cargando datos del turno...');
+                                                            // Cargar ingresos, citas y comisiones del turno
+                                                            const [ingresos, citas, comisiones, ventas] = await Promise.all([
+                                                                obtenerIngresosTurno(caja.id),
+                                                                obtenerCitasTurno(caja.id),
+                                                                obtenerComisionesTurno(caja.id),
+                                                                obtenerVentasDetalladasTurno(caja.id)
+                                                            ]);
+                                                            
+                                                            console.log('Datos cargados:', { 
+                                                              ingresos, 
+                                                              citas, 
+                                                              comisiones, 
+                                                              ventas 
+                                                            });
+                                                            
+                                                            setIngresosTurno(ingresos);
+                                                            setCitasTurno(citas);
+                                                            setComisionesTurno(comisiones);
+                                                            setVentasTurno(ventas);
+                                                        } catch (error) {
+                                                            console.error('Error cargando datos del turno:', error);
+                                                            showToast('error', 'Error al cargar detalles del turno');
+                                                        }
+                                                    }}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Ver Detalles
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        console.log('🖨️ Imprimiendo reporte para caja:', caja.id);
+                                                        // Navegar a página de impresión del reporte
+                                                        window.open(`/caja/imprimir/${caja.id}`, '_blank');
+                                                    }}
+                                                    className="text-green-600 hover:text-green-800 font-medium flex items-center gap-1"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                    </svg>
+                                                    Imprimir Reporte
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -845,7 +1180,7 @@ export default function CajaPage() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setItemOffset(Math.min(itemOffset + itemsPerPage, historialCierres.length - itemsPerPage))}
+                                onClick={() => setItemOffset(Math.min(itemOffset + itemsPerPage, (pageCount - 1) * itemsPerPage))}
                                 disabled={itemOffset + itemsPerPage >= historialCierres.length}
                             >
                                 <ChevronRight className="w-4 h-4" />
@@ -938,33 +1273,33 @@ export default function CajaPage() {
                                         </div>
 
                                         {/* Lista de Productos */}
-                                        {venta.items && venta.items.length > 0 && (
+                                        {venta.detalles_ventas && venta.detalles_ventas.length > 0 && (
                                             <div className="mt-4">
-                                                <h4 className="font-medium text-gray-700 mb-2">Productos:</h4>
+                                                <h4 className="font-medium text-gray-700 mb-2">Productos/Servicios:</h4>
                                                 <div className="overflow-x-auto">
                                                     <table className="min-w-full divide-y divide-gray-200">
                                                         <thead className="bg-gray-50">
                                                             <tr>
-                                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto/Servicio</th>
                                                                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
                                                                 <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Precio Unitario</th>
                                                                 <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="bg-white divide-y divide-gray-200">
-                                                            {(venta.items as any[]).map((item: any, index: number) => (
-                                                                <tr key={`item-${index}`}>
+                                                            {(venta.detalles_ventas as any[]).map((detalle: any, index: number) => (
+                                                                <tr key={`detalle-${index}`}>
                                                                     <td className="px-4 py-2 text-sm text-gray-900">
-                                                                        {item.producto?.nombre || 'Producto sin nombre'}
+                                                                        {detalle.producto?.nombre || detalle.servicio?.nombre || 'Item sin nombre'}
                                                                     </td>
                                                                     <td className="px-4 py-2 text-sm text-gray-900 text-center">
-                                                                        {item.cantidad || 0}
+                                                                        {detalle.cantidad || 0}
                                                                     </td>
                                                                     <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                                                                        {formatMoney(item.precio_unitario || 0)}
+                                                                        {formatMoney(detalle.precio_unitario || 0)}
                                                                     </td>
                                                                     <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
-                                                                        {formatMoney((item.cantidad || 0) * (item.precio_unitario || 0))}
+                                                                        {formatMoney(detalle.subtotal || 0)}
                                                                     </td>
                                                                 </tr>
                                                             ))}
@@ -1045,6 +1380,26 @@ export default function CajaPage() {
                                 ));
                             })()}
                             
+                            {/* Ingresos POS */}
+                            <div className="flex justify-between items-center py-2 border-b">
+                                <span className="font-medium text-gray-700">
+                                    Ingresos POS:
+                                </span>
+                                <span className="font-bold text-lg text-green-600">
+                                    {formatMoney(ingresosTurno.ingresosPOS)}
+                                </span>
+                            </div>
+                            
+                            {/* Ingresos Citas */}
+                            <div className="flex justify-between items-center py-2 border-b">
+                                <span className="font-medium text-gray-700">
+                                    Ingresos Citas:
+                                </span>
+                                <span className="font-bold text-lg text-blue-600">
+                                    {formatMoney(ingresosTurno.ingresosCitas)}
+                                </span>
+                            </div>
+                            
                             {/* Total de Citas */}
                             {citasTurno.length > 0 && (
                                 <div className="flex justify-between items-center py-2 border-b">
@@ -1075,8 +1430,7 @@ export default function CajaPage() {
                                 <span className="font-bold text-xl text-green-600">
                                     {formatMoney(
                                         (cajaSeleccionada.monto_apertura || 0) +
-                                        ventasTurno.reduce((sum, venta) => sum + (venta.total || 0), 0) +
-                                        citasTurno.reduce((sum, cita) => sum + (cita.valor_total || 0), 0)
+                                        ingresosTurno.totalGeneral
                                     )}
                                 </span>
                             </div>
@@ -1087,10 +1441,7 @@ export default function CajaPage() {
                                     Total Actividades (Ventas + Citas):
                                 </span>
                                 <span className="font-medium text-gray-700">
-                                    {formatMoney(
-                                        ventasTurno.reduce((sum, venta) => sum + (venta.total || 0), 0) +
-                                        citasTurno.reduce((sum, cita) => sum + (cita.valor_total || 0), 0)
-                                    )}
+                                    {formatMoney(ingresosTurno.totalGeneral)}
                                 </span>
                             </div>
                         </div>
@@ -1248,28 +1599,46 @@ export default function CajaPage() {
                         
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Monto Físico en Caja
+                                Efectivo Real
                             </label>
                             <input
                                 type="number"
-                                value={montoCierre}
-                                onChange={(e) => setMontoCierre(e.target.value)}
+                                value={efectivoReal}
+                                onChange={(e) => setEfectivoReal(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 placeholder="0.00"
                                 step="0.01"
                             />
                         </div>
                         
-                        {montoCierre && (
-                            <div className={`p-3 rounded ${parseFloat(montoCierre) === ((cajaActual?.monto_apertura || 0) + ventasAcumuladas) ? 'bg-green-50' : 'bg-yellow-50'}`}>
-                                <p className="text-sm font-medium">
-                                    {parseFloat(montoCierre) === ((cajaActual?.monto_apertura || 0) + ventasAcumuladas) 
-                                        ? '✅ Cuadra perfectamente' 
-                                        : `⚠️ Diferencia: $${Math.abs(parseFloat(montoCierre) - ((cajaActual?.monto_apertura || 0) + ventasAcumuladas)).toLocaleString('es-CO')}`
-                                    }
-                                </p>
+                        <div className="bg-indigo-50 p-3 rounded">
+                            <label className="block text-sm font-medium text-indigo-700 mb-2">
+                                Diferencia
+                            </label>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-indigo-600">
+                                        {formatMoney(calcularEfectivoEsperado())} (esperado) vs {formatMoney(parseFloat(efectivoReal) || 0)} (real)
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-2xl font-bold ${
+                                        diferencia < 0 
+                                            ? 'text-red-600' 
+                                            : diferencia > 0 
+                                                ? 'text-green-600' 
+                                                : 'text-gray-600'
+                                    }`}>
+                                        {diferencia < 0 
+                                            ? `Faltante: ${formatMoney(Math.abs(diferencia))}`
+                                            : diferencia > 0 
+                                                ? `Sobrante: ${formatMoney(diferencia)}`
+                                                : 'Cuadrado'
+                                        }
+                                    </p>
+                                </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                     
                     <div className="flex space-x-3">

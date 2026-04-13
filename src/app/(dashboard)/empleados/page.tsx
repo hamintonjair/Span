@@ -474,7 +474,7 @@ export default function EmpleadosPage() {
         {/* Modal para agregar/editar empleado */}
         {showModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white">
+            <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <CardTitle>
                   {editingEmpleado ? 'Editar Empleado' : 'Agregar Empleado'}
@@ -484,59 +484,60 @@ export default function EmpleadosPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                      <label className="block text-sm font-medium text-gray-300">Nombre Completo</label>
                       <input
                         type="text"
                         required
                         value={formData.nombre_completo}
                         onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Juan Pérez"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Email</label>
+                      <label className="block text-sm font-medium text-gray-300">Email</label>
                       <input
                         type="email"
                         required
                         value={formData.email_empleado}
                         onChange={(e) => setFormData({ ...formData, email_empleado: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder="empleado@ejemplo.com"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Cédula</label>
+                      <label className="block text-sm font-medium text-gray-300">Cédula</label>
                       <input
                         type="text"
                         required
                         value={formData.cedula}
                         onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder="123-456789-0"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                      <label className="block text-sm font-medium text-gray-300">Teléfono</label>
                       <input
                         type="tel"
                         value={formData.telefono}
                         onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder="+1 234 567 8900"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                      <label className="block text-sm font-medium text-gray-300">Dirección</label>
                       <textarea
                         value={formData.direccion}
                         onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         rows={3}
                         placeholder="Calle, número, ciudad, país"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Sueldo Base</label>
+                      <label className="block text-sm font-medium text-gray-300">Sueldo Base</label>
                       <input
                         type="number"
                         required
@@ -544,12 +545,12 @@ export default function EmpleadosPage() {
                         step="0.01"
                         value={formData.sueldo_base}
                         onChange={(e) => setFormData({ ...formData, sueldo_base: parseFloat(e.target.value) })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Sueldo base mensual</p>
+                      <p className="text-xs text-gray-400 mt-1">Sueldo base mensual</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Porcentaje de Comisión</label>
+                      <label className="block text-sm font-medium text-gray-300">Porcentaje de Comisión (%)</label>
                       <input
                         type="number"
                         required
@@ -558,27 +559,27 @@ export default function EmpleadosPage() {
                         step="0.01"
                         value={formData.porcentaje_comision}
                         onChange={(e) => setFormData({ ...formData, porcentaje_comision: parseFloat(e.target.value) })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Porcentaje asignado por servicios</p>
+                      <p className="text-xs text-gray-400 mt-1">Porcentaje asignado por servicios</p>
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Fecha de Contratación</label>
+                      <label className="block text-sm font-medium text-gray-300">Fecha de Contratación</label>
                       <input
                         type="date"
                         required
                         value={formData.fecha_contratacion}
                         onChange={(e) => setFormData({ ...formData, fecha_contratacion: e.target.value })}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
                     {editingEmpleado && (
                       <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Estado</label>
+                        <label className="block text-sm font-medium text-gray-300">Estado</label>
                         <select
                           value={formData.estado}
                           onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'activo' | 'inactivo' })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                          className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         >
                           <option value="activo">Activo</option>
                           <option value="inactivo">Inactivo</option>
