@@ -18,10 +18,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   // Para admin_global, no mostrar loading aunque empresa_id sea null
   if (loading && (!user || user.rol !== 'admin_global')) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+          <p className="mt-4 text-gray-700">Cargando...</p>
         </div>
       </div>
     );
@@ -30,10 +30,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   // Si no hay usuario, mostrar carga
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+          <p className="mt-4 text-gray-700">Cargando...</p>
         </div>
       </div>
     );
@@ -41,7 +41,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   // Permitir renderizado para admin_global aunque empresa_id sea null
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-amber-50 flex">
       {/* Sidebar */}
       <Sidebar 
         userRole={user.rol as 'admin_global' | 'admin_empresa' | 'estilista' | 'recepcionista' | 'empleado'}
@@ -52,13 +52,13 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white border-b border-amber-100 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {user.rol === 'admin_global' ? 'BeautyPro Admin' : 'BeautyPro'}
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-600">
                 {user.rol === 'admin_global' ? 'Panel de Administración Global' : 'Sistema de Gestión de Salón de Belleza'}
               </p>
             </div>
@@ -66,7 +66,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{user.nombre}</p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-xs text-gray-600 capitalize">
                   {user.rol === 'admin_global' ? 'Administrador Global' : user.rol.replace('_', ' ')}
                 </p>
               </div>
@@ -81,7 +81,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 bg-amber-50">
           {children}
         </main>
       </div>

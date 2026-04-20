@@ -6,8 +6,11 @@ import { ToastProvider } from '@/components/ui/toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BeautyPro - Sistema de Gestión de Salón de Belleza',
-  description: 'Sistema completo para gestión de salones de belleza con multi-tenant',
+  title: 'ASpan - Sistema de Gestión',
+  description: 'Sistema completo de gestión para tu negocio',
+  icons: {
+    icon: '/logo.svg',
+  },
 }
 
 export default function RootLayout({

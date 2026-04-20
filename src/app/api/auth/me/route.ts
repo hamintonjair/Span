@@ -3,25 +3,33 @@ import { verifyJWT } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Verificando token en /api/auth/me...');
+    
     // Obtener token de la cookie
     const token = request.cookies.get('auth-token')?.value;
+    console.log('Token encontrado:', !!token);
 
     if (!token) {
+      console.log('No se encontró token en las cookies');
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: 'No autorizado - no token found' },
         { status: 401 }
       );
     }
 
+    console.log('Verificando token JWT...');
     // Verificar token
     const payload = await verifyJWT(token);
 
     if (!payload) {
+      console.log('Token inválido o expirado');
       return NextResponse.json(
-        { error: 'Token inválido' },
+        { error: 'Token inválido o expirado' },
         { status: 401 }
       );
     }
+
+    console.log('Token válido, payload:', payload);
 
     // Devolver información del usuario
     return NextResponse.json({

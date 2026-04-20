@@ -16,7 +16,7 @@ import {
   PlusIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
-import { getModulosConfig } from '@/lib/modulos';
+import { MODULES_CONFIG, getModulosByCategory } from '@/lib/modulos-config';
 
 // Componentes temporales para CardTitle y CardDescription
 const CardTitle = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -172,14 +172,18 @@ const DialogFooter = ({ children }: { children: React.ReactNode }) => (
 
 // Componente para mostrar módulos del plan
 const PlanModules = ({ plan }: { plan: Plan }) => {
-  const modulosConfig = getModulosConfig();
+  const modulosConfig = MODULES_CONFIG;
+  
+  console.log('🔍 DEBUG: Plan actual:', plan);
+  console.log('🔍 DEBUG: Módulos config:', modulosConfig);
   
   return (
     <div className="space-y-2">
       <h4 className="font-medium text-sm text-gray-900">Módulos incluidos:</h4>
       <div className="grid grid-cols-2 gap-2">
-        {modulosConfig.map(modulo => {
-          const isActive = plan[modulo.key];
+        {modulosConfig.map((modulo: any) => {
+          const isActive = plan[modulo.campoBD as keyof Plan];
+          console.log(`🔍 DEBUG: Módulo ${modulo.nombre}: campoBD=${modulo.campoBD}, valor=${isActive}`);
           return (
             <div 
               key={modulo.key}
@@ -214,6 +218,8 @@ interface Plan {
   tiene_inventario: boolean;
   tiene_comisiones: boolean;
   tiene_marketing: boolean;
+  tiene_nominas: boolean;
+  tiene_analytics: boolean;
   soporte_prioritario: boolean;
   creado_en?: string;
   actualizado_en?: string;
@@ -237,6 +243,8 @@ export default function PlansPage() {
     tiene_inventario: false,
     tiene_comisiones: false,
     tiene_marketing: false,
+    tiene_nominas: false,
+    tiene_analytics: false,
     soporte_prioritario: false,
   });
   const [saving, setSaving] = useState(false);
@@ -263,6 +271,8 @@ export default function PlansPage() {
           tiene_inventario,
           tiene_comisiones,
           tiene_marketing,
+          tiene_nominas,
+          tiene_analytics,
           soporte_prioritario,
           creado_en,
           actualizado_en
@@ -285,6 +295,8 @@ export default function PlansPage() {
         tiene_inventario: plan.tiene_inventario || false,
         tiene_comisiones: plan.tiene_comisiones || false,
         tiene_marketing: plan.tiene_marketing || false,
+        tiene_nominas: plan.tiene_nominas || false,
+        tiene_analytics: plan.tiene_analytics || false,
         soporte_prioritario: plan.soporte_prioritario || false,
         creado_en: plan.creado_en || null,
         actualizado_en: plan.actualizado_en || null,
@@ -311,6 +323,8 @@ export default function PlansPage() {
       tiene_inventario: plan.tiene_inventario,
       tiene_comisiones: plan.tiene_comisiones,
       tiene_marketing: plan.tiene_marketing,
+      tiene_nominas: plan.tiene_nominas,
+      tiene_analytics: plan.tiene_analytics,
       soporte_prioritario: plan.soporte_prioritario,
     });
     console.log('🔍 DEBUG: FormData cargado:', {
@@ -335,6 +349,8 @@ export default function PlansPage() {
         tiene_inventario: formData.tiene_inventario,
         tiene_comisiones: formData.tiene_comisiones,
         tiene_marketing: formData.tiene_marketing,
+        tiene_nominas: formData.tiene_nominas,
+        tiene_analytics: formData.tiene_analytics,
         soporte_prioritario: formData.soporte_prioritario,
         actualizado_en: new Date().toISOString(),
       };
@@ -355,6 +371,8 @@ export default function PlansPage() {
               tiene_inventario: planData.tiene_inventario,
               tiene_comisiones: planData.tiene_comisiones,
               tiene_marketing: planData.tiene_marketing,
+              tiene_nominas: planData.tiene_nominas,
+              tiene_analytics: planData.tiene_analytics,
               soporte_prioritario: planData.soporte_prioritario,
               actualizado_en: planData.actualizado_en
             })
@@ -379,6 +397,8 @@ export default function PlansPage() {
               tiene_inventario: planData.tiene_inventario,
               tiene_comisiones: planData.tiene_comisiones,
               tiene_marketing: planData.tiene_marketing,
+              tiene_nominas: planData.tiene_nominas,
+              tiene_analytics: planData.tiene_analytics,
               soporte_prioritario: planData.soporte_prioritario,
               creado_en: new Date().toISOString(),
               actualizado_en: planData.actualizado_en
@@ -409,6 +429,8 @@ export default function PlansPage() {
         tiene_inventario: false,
         tiene_comisiones: false,
         tiene_marketing: false,
+        tiene_nominas: false,
+        tiene_analytics: false,
         soporte_prioritario: false,
       });
       loadPlans();
@@ -430,6 +452,8 @@ export default function PlansPage() {
       tiene_inventario: false,
       tiene_comisiones: false,
       tiene_marketing: false,
+      tiene_nominas: false,
+      tiene_analytics: false,
       soporte_prioritario: false,
     });
     setIsModalOpen(true);
@@ -594,9 +618,9 @@ export default function PlansPage() {
 
         {/* Modal de Edición */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-[1100px] w-[95vw] bg-white rounded-2xl shadow-xl p-8">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-gray-900">
                 {editingPlan ? 'Editar Plan' : 'Crear Nuevo Plan'}
               </DialogTitle>
               <DialogDescription>
@@ -607,118 +631,187 @@ export default function PlansPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 py-4">
-              {/* Información Básica */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre del Plan</Label>
-                  <Input
-                    id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    placeholder="Ej: Profesional"
+            <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* Columna Izquierda: Información Básica y Límites */}
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-base font-semibold text-gray-900 mb-4 block">Información Básica</Label>
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label htmlFor="nombre" className="text-sm font-medium text-gray-700">Nombre del Plan</Label>
+                      <Input
+                        id="nombre"
+                        value={formData.nombre}
+                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                        placeholder="Ej: Profesional"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="precio" className="text-sm font-medium text-gray-700">Precio Mensual ($)</Label>
+                      <Input
+                        id="precio"
+                        type="number"
+                        value={formData.precio}
+                        onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
+                        placeholder="29.99"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="descripcion" className="text-sm font-medium text-gray-700">Descripción</Label>
+                  <Textarea
+                    id="descripcion"
+                    value={formData.descripcion}
+                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                    placeholder="Describe los beneficios principales de este plan..."
+                    rows={3}
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="precio">Precio Mensual ($)</Label>
-                  <Input
-                    id="precio"
-                    type="number"
-                    value={formData.precio}
-                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
-                    placeholder="29.99"
-                  />
+
+                <div>
+                  <Label className="text-base font-semibold text-gray-900 mb-4 block">Límites y Restricciones</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <Label htmlFor="limite_usuarios" className="text-sm font-medium text-gray-700">Límite de Usuarios</Label>
+                      <Input
+                        id="limite_usuarios"
+                        type="number"
+                        value={formData.limite_usuarios}
+                        onChange={(e) => setFormData({ ...formData, limite_usuarios: parseInt(e.target.value) || 0 })}
+                        placeholder="0 (ilimitado)"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="limite_sucursales" className="text-sm font-medium text-gray-700">Límite de Sucursales</Label>
+                      <Input
+                        id="limite_sucursales"
+                        type="number"
+                        value={formData.limite_sucursales}
+                        onChange={(e) => setFormData({ ...formData, limite_sucursales: parseInt(e.target.value) || 0 })}
+                        placeholder="0 (ilimitado)"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="descripcion">Descripción</Label>
-                <Textarea
-                  id="descripcion"
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                  placeholder="Describe los beneficios principales de este plan..."
-                  rows={3}
-                />
-              </div>
-
-              {/* Límites */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="limite_usuarios">Límite de Usuarios</Label>
-                  <Input
-                    id="limite_usuarios"
-                    type="number"
-                    value={formData.limite_usuarios}
-                    onChange={(e) => setFormData({ ...formData, limite_usuarios: parseInt(e.target.value) || 0 })}
-                    placeholder="0 (ilimitado)"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="limite_sucursales">Límite de Sucursales</Label>
-                  <Input
-                    id="limite_sucursales"
-                    type="number"
-                    value={formData.limite_sucursales}
-                    onChange={(e) => setFormData({ ...formData, limite_sucursales: parseInt(e.target.value) || 0 })}
-                    placeholder="0 (ilimitado)"
-                  />
-                </div>
-              </div>
-
-              {/* Beneficios */}
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Beneficios y Módulos</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">📦</span>
-                      <Label htmlFor="tiene_inventario" className="text-sm">Inventario</Label>
+              {/* Columna Derecha: Módulos y Beneficios */}
+              <div className="space-y-6">
+                <Label className="text-base font-semibold text-gray-900 mb-4 block">Módulos y Beneficios</Label>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Inventario */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📦</span>
+                      <div className="flex-1">
+                        <Label htmlFor="tiene_inventario" className="text-sm font-semibold text-gray-800">Inventario</Label>
+                        <p className="text-xs text-gray-600 mt-1">Control de stock y productos</p>
+                      </div>
                     </div>
                     <Switch
                       id="tiene_inventario"
                       checked={formData.tiene_inventario}
                       onCheckedChange={(checked) => setFormData({ ...formData, tiene_inventario: checked })}
+                      className="scale-110"
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">💰</span>
-                      <Label htmlFor="tiene_comisiones" className="text-sm">Comisiones</Label>
+
+                  {/* Comisiones */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">💰</span>
+                      <div className="flex-1">
+                        <Label htmlFor="tiene_comisiones" className="text-sm font-semibold text-gray-800">Comisiones</Label>
+                        <p className="text-xs text-gray-600 mt-1">Cálculo de pagos a empleados</p>
+                      </div>
                     </div>
                     <Switch
                       id="tiene_comisiones"
                       checked={formData.tiene_comisiones}
                       onCheckedChange={(checked) => setFormData({ ...formData, tiene_comisiones: checked })}
+                      className="scale-110"
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">📢</span>
-                      <Label htmlFor="tiene_marketing" className="text-sm">Marketing</Label>
+
+                  {/* Marketing */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📢</span>
+                      <div className="flex-1">
+                        <Label htmlFor="tiene_marketing" className="text-sm font-semibold text-gray-800">Marketing</Label>
+                        <p className="text-xs text-gray-600 mt-1">Envío de promociones</p>
+                      </div>
                     </div>
                     <Switch
                       id="tiene_marketing"
                       checked={formData.tiene_marketing}
                       onCheckedChange={(checked) => setFormData({ ...formData, tiene_marketing: checked })}
+                      className="scale-110"
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">⭐</span>
-                      <Label htmlFor="soporte_prioritario" className="text-sm">Soporte Prioritario</Label>
+
+                  {/* Nóminas */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">💳</span>
+                      <div className="flex-1">
+                        <Label htmlFor="tiene_nominas" className="text-sm font-semibold text-gray-800">Nóminas</Label>
+                        <p className="text-xs text-gray-600 mt-1">Gestión de pagos y comisiones</p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="tiene_nominas"
+                      checked={formData.tiene_nominas}
+                      onCheckedChange={(checked) => setFormData({ ...formData, tiene_nominas: checked })}
+                      className="scale-110"
+                    />
+                  </div>
+
+                  {/* Analytics */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📊</span>
+                      <div className="flex-1">
+                        <Label htmlFor="tiene_analytics" className="text-sm font-semibold text-gray-800">Analytics</Label>
+                        <p className="text-xs text-gray-600 mt-1">Análisis avanzado de datos</p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="tiene_analytics"
+                      checked={formData.tiene_analytics}
+                      onCheckedChange={(checked) => setFormData({ ...formData, tiene_analytics: checked })}
+                      className="scale-110"
+                    />
+                  </div>
+
+                  {/* Soporte Prioritario */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl hover:shadow-md transition-all h-full">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⭐</span>
+                      <div className="flex-1">
+                        <Label htmlFor="soporte_prioritario" className="text-sm font-semibold text-gray-800">Soporte Prioritario</Label>
+                        <p className="text-xs text-gray-600 mt-1">Atención prioritaria 24/7</p>
+                      </div>
                     </div>
                     <Switch
                       id="soporte_prioritario"
                       checked={formData.soporte_prioritario}
                       onCheckedChange={(checked) => setFormData({ ...formData, soporte_prioritario: checked })}
+                      className="scale-110"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mt-8">
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancelar
               </Button>

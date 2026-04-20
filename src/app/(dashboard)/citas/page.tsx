@@ -144,6 +144,11 @@ export default function CitasPage() {
   const [limiteResultados, setLimiteResultados] = useState(3);
   const [mostrarTodos, setMostrarTodos] = useState(false);
   
+  // Estados para modales de selección
+  const [showModalClientes, setShowModalClientes] = useState(false);
+  const [showModalEmpleados, setShowModalEmpleados] = useState(false);
+  const [showModalServicios, setShowModalServicios] = useState(false);
+  
   // Estados para toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
@@ -1358,13 +1363,10 @@ export default function CitasPage() {
                     {clientesFiltrados.length > limiteResultados && (
                       <div className="p-2 text-center border-t border-gray-200">
                         <button
-                          onClick={() => setMostrarTodos(!mostrarTodos)}
+                          onClick={() => setShowModalClientes(true)}
                           className="text-xs text-blue-500 hover:text-blue-700"
                         >
-                          {mostrarTodos ? 
-                            `Mostrar solo 3 de ${clientesFiltrados.length} clientes` : 
-                            `Mostrar todos los ${clientesFiltrados.length} clientes`
-                          }
+                          Mostrar todos los {clientesFiltrados.length} clientes
                         </button>
                       </div>
                     )}
@@ -1441,13 +1443,10 @@ export default function CitasPage() {
                     {empleadosFiltrados.length > limiteResultados && (
                       <div className="p-2 text-center border-t border-gray-200">
                         <button
-                          onClick={() => setMostrarTodos(!mostrarTodos)}
+                          onClick={() => setShowModalEmpleados(true)}
                           className="text-xs text-blue-500 hover:text-blue-700"
                         >
-                          {mostrarTodos ? 
-                            `Mostrar solo 3 de ${empleadosFiltrados.length} empleados` : 
-                            `Mostrar todos los ${empleadosFiltrados.length} empleados`
-                          }
+                          Mostrar todos los {empleadosFiltrados.length} empleados
                         </button>
                       </div>
                     )}
@@ -1535,13 +1534,10 @@ export default function CitasPage() {
                     {serviciosFiltrados.length > limiteResultados && (
                       <div className="p-2 text-center border-t border-gray-200">
                         <button
-                          onClick={() => setMostrarTodos(!mostrarTodos)}
+                          onClick={() => setShowModalServicios(true)}
                           className="text-xs text-blue-500 hover:text-blue-700"
                         >
-                          {mostrarTodos ? 
-                            `Mostrar solo 3 de ${serviciosFiltrados.length} servicios` : 
-                            `Mostrar todos los ${serviciosFiltrados.length} servicios`
-                          }
+                          Mostrar todos los {serviciosFiltrados.length} servicios
                         </button>
                       </div>
                     )}
@@ -1763,6 +1759,245 @@ export default function CitasPage() {
                   </div>
                 );
               })()}
+            </div>
+          </Modal>
+        )}
+
+        {/* Modal de selección de clientes */}
+        {showModalClientes && (
+          <Modal
+            isOpen={showModalClientes}
+            onClose={() => setShowModalClientes(false)}
+            title="Seleccionar Cliente"
+            size="xl"
+          >
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar cliente por nombre..."
+                  value={busquedaCliente}
+                  onChange={(e) => setBusquedaCliente(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+              {clientesFiltrados.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Nombre</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Cédula</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Email</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientesFiltrados.map((cliente: Cliente) => (
+                      <tr
+                        key={cliente.id}
+                        className="hover:bg-gray-50 border-b border-gray-100"
+                      >
+                        <td className="px-4 py-2">{cliente.nombre}</td>
+                        <td className="px-4 py-2 text-gray-500">{cliente.cedula || '-'}</td>
+                        <td className="px-4 py-2 text-gray-500">{cliente.email || '-'}</td>
+                        <td className="px-4 py-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setNuevaCita((prev: NuevaCita) => ({...prev, cliente_id: cliente.id}));
+                              setBusquedaCliente(cliente.nombre);
+                              setShowModalClientes(false);
+                            }}
+                            className="text-xs"
+                          >
+                            Seleccionar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500 mb-2">No hay clientes disponibles</p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setShowModalClientes(false);
+                      setShowNuevoClienteModal(true);
+                    }}
+                    className="text-xs"
+                  >
+                    <UserPlus className="w-3 h-3 mr-1" />
+                    Crear Nuevo Cliente
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* Modal de selección de empleados */}
+        {showModalEmpleados && (
+          <Modal
+            isOpen={showModalEmpleados}
+            onClose={() => setShowModalEmpleados(false)}
+            title="Seleccionar Empleado"
+            size="xl"
+          >
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar empleado por nombre..."
+                  value={busquedaEmpleado}
+                  onChange={(e) => setBusquedaEmpleado(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+              {empleadosFiltrados.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Nombre</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Cédula</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Estado</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Correo</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {empleadosFiltrados.map((empleado: Empleado) => (
+                      <tr
+                        key={empleado.id}
+                        className="hover:bg-gray-50 border-b border-gray-100"
+                      >
+                        <td className="px-4 py-2">{empleado.nombre_completo}</td>
+                        <td className="px-4 py-2 text-gray-500">{empleado.cedula || '-'}</td>
+                        <td className="px-4 py-2 text-gray-500">{empleado.estado}</td>
+                        <td className="px-4 py-2 text-gray-500">{empleado.email_empleado || '-'}</td>
+                        <td className="px-4 py-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setNuevaCita((prev: NuevaCita) => ({...prev, empleado_id: empleado.id}));
+                              setBusquedaEmpleado(empleado.nombre_completo || '');
+                              setShowModalEmpleados(false);
+                            }}
+                            className="text-xs"
+                          >
+                            Seleccionar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No hay empleados activos</p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* Modal de selección de servicios */}
+        {showModalServicios && (
+          <Modal
+            isOpen={showModalServicios}
+            onClose={() => setShowModalServicios(false)}
+            title="Seleccionar Servicios"
+            size="xl"
+          >
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar servicio por nombre..."
+                  value={busquedaServicio}
+                  onChange={(e) => setBusquedaServicio(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+              {serviciosFiltrados.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Nombre</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Precio</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Duración</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviciosFiltrados.map((servicio: Servicio) => {
+                      const isSelected = nuevaCita.servicios_ids.includes(servicio.id);
+                      return (
+                        <tr
+                          key={servicio.id}
+                          className="hover:bg-gray-50 border-b border-gray-100"
+                        >
+                          <td className="px-4 py-2">{servicio.nombre}</td>
+                          <td className="px-4 py-2 text-gray-500">${servicio.precio}</td>
+                          <td className="px-4 py-2 text-gray-500">{servicio.duracion_minutos} min</td>
+                          <td className="px-4 py-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setNuevaCita((prev: NuevaCita) => ({
+                                    ...prev,
+                                    servicios_ids: prev.servicios_ids.filter(id => id !== servicio.id)
+                                  }));
+                                } else {
+                                  setNuevaCita((prev: NuevaCita) => ({
+                                    ...prev,
+                                    servicios_ids: [...prev.servicios_ids, servicio.id]
+                                  }));
+                                }
+                              }}
+                              className={`text-xs ${isSelected ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+                            >
+                              {isSelected ? 'Quitar' : 'Agregar'}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No hay servicios disponibles</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  {nuevaCita.servicios_ids.length} servicio(s) seleccionado(s)
+                </p>
+                <Button
+                  onClick={() => setShowModalServicios(false)}
+                  className="text-xs"
+                >
+                  Cerrar
+                </Button>
+              </div>
             </div>
           </Modal>
         )}

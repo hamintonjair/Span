@@ -17,14 +17,21 @@ export function useJWTAuth() {
   useEffect(() => {
     const getUserFromToken = async () => {
       try {
+        console.log('Verificando autenticación...');
+        
         // Obtener el token de la cookie (del lado del cliente no podemos leer HttpOnly cookies directamente)
         // Así que necesitamos un endpoint para obtener el usuario actual
         const response = await fetch('/api/auth/me');
         
+        console.log('Respuesta de /api/auth/me:', response.status);
+        
         if (response.ok) {
           const userData = await response.json();
+          console.log('Usuario autenticado:', userData.user);
           setUser(userData.user);
         } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.log('Error de autenticación:', response.status, errorData);
           setUser(null);
         }
       } catch (error) {

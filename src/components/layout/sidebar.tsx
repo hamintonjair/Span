@@ -12,14 +12,12 @@ import {
   ShoppingCartIcon,
   UserIcon,
   CogIcon,
-  ChartBarIcon,
   CreditCardIcon,
   DocumentTextIcon,
   CurrencyDollarIcon,
   UsersIcon,
   BuildingOfficeIcon,
   ClipboardDocumentListIcon,
-  ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
   Cog6ToothIcon,
@@ -27,7 +25,12 @@ import {
   BellIcon,
   TagIcon,
   TruckIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  MegaphoneIcon, 
+  PresentationChartBarIcon,
+  ArrowRightOnRectangleIcon,
+  StarIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -36,7 +39,7 @@ interface SidebarItem {
   icon: React.ReactNode;
   roles: string[];
   section?: 'main' | 'saas' | 'platform';
-  requiresPermission?: 'inventory' | 'commissions' | 'marketing';
+  requiresPermission?: 'inventory' | 'commissions' | 'marketing' | 'analytics' | 'nominas' | 'priority_support';
 }
 
 interface SidebarProps {
@@ -49,7 +52,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Dashboard principal
   {
     title: 'Dashboard',
-    href: userRole === 'admin_global' ? '/admin-dashboard' : '/dashboard-empresa',
+    href: userRole === 'admin_global' ? '/admin/dashboard-admin' : '/dashboard-empresa',
     icon: <HomeIcon className="w-5 h-5" />,
     roles: ['admin_global', 'admin_empresa', 'estilista', 'recepcionista', 'empleado'],
     section: 'main'
@@ -58,7 +61,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Finanzas (solo admin_global y admin_empresa)
   {
     title: 'Finanzas',
-    href: userRole === 'admin_global' ? '/finanzas' : '/finanzas-empresa',
+    href: userRole === 'admin_global' ? '/admin/finanzas' : '/finanzas-empresa',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
     roles: ['admin_global', 'admin_empresa'],
     section: 'main'
@@ -67,7 +70,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Auditoría (solo admin_global)
   {
     title: 'Auditoría',
-    href: '/auditoria',
+    href: '/admin/auditoria',
     icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
     roles: ['admin_global'],
     section: 'saas'
@@ -76,7 +79,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Comunicación (solo admin_global)
   {
     title: 'Comunicación',
-    href: '/comunicacion',
+    href: '/admin/comunicacion',
     icon: <BellIcon className="w-5 h-5" />,
     roles: ['admin_global'],
     section: 'saas'
@@ -85,21 +88,21 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Administración SaaS (solo admin_global)
   {
     title: 'Empresas',
-    href: '/empresas',
+    href: '/admin/empresas',
     icon: <BuildingOfficeIcon className="w-5 h-5" />,
     roles: ['admin_global'],
     section: 'saas'
   },
   {
     title: 'Suscripciones',
-    href: '/suscripciones',
+    href: '/admin/suscripciones',
     icon: <CreditCardIcon className="w-5 h-5" />,
     roles: ['admin_global'],
     section: 'saas'
   },
   {
     title: 'Planes y Beneficios',
-    href: '/planes',
+    href: '/admin/planes',
     icon: <Cog6ToothIcon className="w-5 h-5" />,
     roles: ['admin_global'],
     section: 'saas'
@@ -110,28 +113,35 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Mi Suscripción',
     href: '/suscripcion',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa'],
     section: 'main'
   },
   {
-    title: 'Punto de Venta',
+    title: 'POS',
     href: '/ventas/nueva',
     icon: <CreditCardIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista', 'estilista'],
+    section: 'main'
+  },
+  {
+    title: 'Historial de Ventas',
+    href: '/ventas',
+    icon: <DocumentTextIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main'
   },
   {
     title: 'Citas',
     href: '/citas',
     icon: <CalendarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'estilista', 'recepcionista'],
     section: 'main'
   },
   {
     title: 'Gestión de Citas',
     href: '/citas/gestion',
     icon: <TableCellsIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'estilista', 'recepcionista'],
     section: 'main'
   },
   {
@@ -145,21 +155,21 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Productos',
     href: '/productos',
     icon: <ShoppingCartIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main'
   },
   {
     title: 'Servicios',
     href: '/servicios',
     icon: <DocumentTextIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main'
   },
   {
     title: 'Proveedores',
     href: '/proveedores',
     icon: <TruckIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main'
   },
 
@@ -180,7 +190,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   },
   {
     title: 'Usuarios',
-    href: '/usuarios',
+    href: userRole === 'admin_global' ? '/admin/usuarios' : '/usuarios',
     icon: <UsersIcon className="w-5 h-5" />,
     roles: ['admin_global', 'admin_empresa'],
     section: 'main'
@@ -198,15 +208,16 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Préstamos',
     href: '/prestamos',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa'],
+    roles: ['admin_empresa','recepcionista'],
     section: 'main'
   },
   {
     title: 'Nóminas',
-    href: '/nominas',
-    icon: <ChartBarIcon className="w-5 h-5" />,
+    href: '/nomina',
+    icon: <CurrencyDollarIcon  className="w-5 h-5" />,
     roles: ['admin_empresa'],
-    section: 'main'
+    section: 'main',
+    requiresPermission: 'nominas'
   },
 
   // Módulos Premium (restringidos por plan)
@@ -214,7 +225,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Inventario',
     href: '/inventario',
     icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main',
     requiresPermission: 'inventory'
   },
@@ -222,20 +233,45 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Comisiones',
     href: '/mis-comisiones',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    roles: ['admin_empresa', 'recepcionista'],
     section: 'main',
     requiresPermission: 'commissions'
   },
-  {
+{
     title: 'Marketing',
     href: '/marketing',
-    icon: <ChartBarIcon className="w-5 h-5" />,
+    // Cambiamos a Megaphone para representar publicidad/captación
+    icon: <MegaphoneIcon className="w-5 h-5" />, 
     roles: ['admin_empresa'],
     section: 'main',
     requiresPermission: 'marketing'
   },
+  {
+    title: 'Analytics',
+    href: '/analytics',
+    // Cambiamos a PresentationChartBar para un look de reportes profesionales
+    icon: <PresentationChartBarIcon className="w-5 h-5" />,
+    roles: ['admin_empresa'],
+    section: 'main',
+    requiresPermission: 'analytics'
+  },
+  {
+    title: 'Soporte Prioritario',
+    href: '/soporte',
+    icon: <StarIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista'],
+    section: 'main',
+    requiresPermission: 'priority_support'
+  },
 
   // Mi Plataforma (admin_global y admin_empresa)
+  {
+    title: 'Ayuda',
+    href: '/ayuda',
+    icon: <QuestionMarkCircleIcon className="w-5 h-5" />,
+    roles: ['admin_global', 'admin_empresa', 'estilista', 'recepcionista'],
+    section: 'platform'
+  },
   {
     title: 'Configuración',
     href: '/configuracion',
@@ -253,7 +289,6 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
 ];
 
 export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
-  console.log('ROL ACTUAL EN SIDEBAR:', userRole);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -262,12 +297,9 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      console.log('Iniciando logout JWT...');
       await logout();
-      console.log('Redirigiendo a login...');
       window.location.href = '/login';
     } catch (error) {
-      console.error('Error en logout:', error);
       window.location.href = '/login';
     }
   };
@@ -295,19 +327,23 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
           {items.map((item) => {
             const isActive = pathname === item.href;
             
-            // Verificar si el item requiere permiso y si el usuario tiene acceso
+            // Verificar si el item requiere permiso y Si el usuario tiene acceso
             let hasPermission = true;
             if (item.requiresPermission && !loading) {
               hasPermission = 
                 item.requiresPermission === 'inventory' ? permissions.canUseInventory :
                 item.requiresPermission === 'commissions' ? permissions.canUseCommissions :
-                permissions.canUseMarketing;
+                item.requiresPermission === 'marketing' ? permissions.canUseMarketing :
+                item.requiresPermission === 'nominas' ? (permissions as any).canUseNominas :
+                item.requiresPermission === 'analytics' ? (permissions as any).canUseAnalytics :
+                item.requiresPermission === 'priority_support' ? (permissions as any).hasPrioritySupport :
+                false;
             }
 
             return (
               <li key={item.href}>
                 <Link
-                  href={item.href}
+                  href={!hasPermission && !loading ? '/suscripcion' : item.href}
                   className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                     isActive
                       ? 'bg-amber-700 text-white shadow-lg'

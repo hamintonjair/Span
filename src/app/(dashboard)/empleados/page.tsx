@@ -473,71 +473,86 @@ export default function EmpleadosPage() {
 
         {/* Modal para agregar/editar empleado */}
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white/10 backdrop-blur-sm border-white/20">
-              <CardHeader>
-                <CardTitle>
-                  {editingEmpleado ? 'Editar Empleado' : 'Agregar Empleado'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {editingEmpleado ? 'Editar Empleado' : 'Agregar Nuevo Empleado'}
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {editingEmpleado ? 'Modifica los datos del empleado' : 'Completa los datos para registrar un nuevo empleado'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="px-6 py-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Nombre Completo</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nombre Completo *</label>
                       <input
                         type="text"
                         required
                         value={formData.nombre_completo}
                         onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         placeholder="Juan Pérez"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                       <input
                         type="email"
                         required
                         value={formData.email_empleado}
                         onChange={(e) => setFormData({ ...formData, email_empleado: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         placeholder="empleado@ejemplo.com"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Cédula</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Cédula *</label>
                       <input
                         type="text"
                         required
                         value={formData.cedula}
                         onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         placeholder="123-456789-0"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Teléfono</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
                       <input
                         type="tel"
                         value={formData.telefono}
                         onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         placeholder="+1 234 567 8900"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-300">Dirección</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
                       <textarea
                         value={formData.direccion}
                         onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         rows={3}
                         placeholder="Calle, número, ciudad, país"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Sueldo Base</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Sueldo Base *</label>
                       <input
                         type="number"
                         required
@@ -545,12 +560,12 @@ export default function EmpleadosPage() {
                         step="0.01"
                         value={formData.sueldo_base}
                         onChange={(e) => setFormData({ ...formData, sueldo_base: parseFloat(e.target.value) })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       />
-                      <p className="text-xs text-gray-400 mt-1">Sueldo base mensual</p>
+                      <p className="text-xs text-gray-500 mt-1">Sueldo base mensual</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300">Porcentaje de Comisión (%)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Porcentaje de Comisión (%) *</label>
                       <input
                         type="number"
                         required
@@ -559,27 +574,27 @@ export default function EmpleadosPage() {
                         step="0.01"
                         value={formData.porcentaje_comision}
                         onChange={(e) => setFormData({ ...formData, porcentaje_comision: parseFloat(e.target.value) })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       />
-                      <p className="text-xs text-gray-400 mt-1">Porcentaje asignado por servicios</p>
+                      <p className="text-xs text-gray-500 mt-1">Porcentaje asignado por servicios</p>
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-300">Fecha de Contratación</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Contratación *</label>
                       <input
                         type="date"
                         required
                         value={formData.fecha_contratacion}
                         onChange={(e) => setFormData({ ...formData, fecha_contratacion: e.target.value })}
-                        className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       />
                     </div>
                     {editingEmpleado && (
                       <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-300">Estado</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                         <select
                           value={formData.estado}
                           onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'activo' | 'inactivo' })}
-                          className="mt-1 block w-full bg-white/10 border border-white/20 text-white rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         >
                           <option value="activo">Activo</option>
                           <option value="inactivo">Inactivo</option>
@@ -587,23 +602,25 @@ export default function EmpleadosPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-end space-x-3 pt-4">
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setShowModal(false)}
+                      className="px-6 py-2"
                     >
                       Cancelar
                     </Button>
                     <Button
                       type="submit"
                       disabled={loading}
+                      className="px-6 py-2"
                     >
-                      {loading ? 'Guardando...' : (editingEmpleado ? 'Actualizar' : 'Guardar')}
+                      {loading ? 'Guardando...' : (editingEmpleado ? 'Actualizar Empleado' : 'Guardar Empleado')}
                     </Button>
                   </div>
                 </form>
-              </CardContent>
+              </div>
             </div>
           </div>
         )}

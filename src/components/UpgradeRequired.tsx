@@ -14,7 +14,7 @@ interface UpgradeRequiredProps {
   moduleIcon: string;
   benefits: string[];
   currentPlan: string;
-  requiredPlan: string;
+  requiredPlan?: string;
   upgradePrice?: number;
 }
 

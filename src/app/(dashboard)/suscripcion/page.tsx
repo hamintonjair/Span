@@ -25,6 +25,8 @@ interface Plan {
   tiene_inventario?: boolean;
   tiene_comisiones?: boolean;
   tiene_marketing?: boolean;
+  tiene_nominas?: boolean;
+  tiene_analytics?: boolean;
   soporte_prioritario?: boolean;
   limite_usuarios?: number;
   limite_sucursales?: number;
@@ -56,6 +58,8 @@ export default function SuscripcionPage() {
     tiene_inventario: 'Gestión de Inventario',
     tiene_comisiones: 'Módulo de Comisiones',
     tiene_marketing: 'Herramientas de Marketing',
+    tiene_nominas: 'Gestión de Nóminas',
+    tiene_analytics: 'Analytics y Reportes',
     soporte_prioritario: 'Soporte Prioritario 24/7'
   };
 
@@ -64,6 +68,8 @@ export default function SuscripcionPage() {
     'tiene_inventario',
     'tiene_comisiones',
     'tiene_marketing',
+    'tiene_nominas',
+    'tiene_analytics',
     'soporte_prioritario'
   ];
 

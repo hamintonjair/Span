@@ -8,6 +8,8 @@ export interface PlanPermissions {
   canUseInventory: boolean;
   canUseCommissions: boolean;
   canUseMarketing: boolean;
+  canUseNominas: boolean;
+  canUseAnalytics: boolean;
   hasPrioritySupport: boolean;
   planName: string;
   planPrice: number;
@@ -20,9 +22,11 @@ export const usePlanPermissions = (): PlanPermissions => {
     canUseInventory: false,
     canUseCommissions: false,
     canUseMarketing: false,
+    canUseNominas: false,
+    canUseAnalytics: false,
     hasPrioritySupport: false,
-    planName: 'Básico',
-    planPrice: 29.99,
+    planName: 'Cargando...',
+    planPrice: 0,
     loading: true
   });
 
@@ -35,7 +39,7 @@ export const usePlanPermissions = (): PlanPermissions => {
 
       try {
         const supabase = createClient();
-        
+                
         const { data, error } = await supabase
           .from('empresas')
           .select(`
@@ -45,6 +49,7 @@ export const usePlanPermissions = (): PlanPermissions => {
           .eq('id', user.empresa_id)
           .single();
 
+      
         if (error || !data) {
           console.error('Error cargando permisos del plan:', error);
           setPermissions(prev => ({ ...prev, loading: false }));
@@ -54,49 +59,37 @@ export const usePlanPermissions = (): PlanPermissions => {
         const empresaData = data as any;
         const planData = empresaData.planes || {};
 
-        // Determinar permisos según el plan
-        const planNombre = planData?.nombre || empresaData.plan_nombre || 'Básico';
-        const planPrecio = planData?.precio || empresaData.plan_precio || 29.99;
+        // Obtener información del plan (dinámico desde BD)
+        const planNombre = planData?.nombre || empresaData.plan_nombre || 'Cargando...';
+        const planPrecio = planData?.precio || empresaData.plan_precio || 0;
 
-        // Lógica de permisos según el plan
-        let canUseInventory = false;
-        let canUseCommissions = false;
-        let canUseMarketing = false;
-        let hasPrioritySupport = false;
+        // DEBUG: Log para depurar permisos
+        console.log('DEBUG - Plan Data:', {
+          planNombre,
+          planPrecio,
+          soporte_prioritario: planData?.soporte_prioritario,
+          tiene_inventario: planData?.tiene_inventario,
+          tiene_comisiones: planData?.tiene_comisiones,
+          tiene_marketing: planData?.tiene_marketing,
+          tiene_analytics: planData?.tiene_analytics
+        });
 
-        // Plan Básico ($29.99): Solo Agenda y Ventas
-        if (planPrecio >= 29.99) {
-          canUseInventory = false;
-          canUseCommissions = false;
-          canUseMarketing = false;
-          hasPrioritySupport = false;
-        }
-
-        // Plan Profesional ($79.99): + Inventario y Comisiones
-        if (planPrecio >= 79.99) {
-          canUseInventory = true;
-          canUseCommissions = true;
-          canUseMarketing = false;
-          hasPrioritySupport = false;
-        }
-
-        // Plan Premium ($149.99): + Marketing y Soporte Prioritario
-        if (planPrecio >= 149.99) {
-          canUseInventory = true;
-          canUseCommissions = true;
-          canUseMarketing = true;
-          hasPrioritySupport = true;
-        }
-
-        setPermissions({
-          canUseInventory,
-          canUseCommissions,
-          canUseMarketing,
-          hasPrioritySupport,
+        // Usar campos booleanos directamente de la BD
+        // Esto hace el sistema completamente dinámico e independiente de precios
+        const permissions = {
+          canUseInventory: planData?.tiene_inventario || false,
+          canUseCommissions: planData?.tiene_comisiones || false,
+          canUseMarketing: planData?.tiene_marketing || false,
+          canUseNominas: planData?.tiene_nominas || false,
+          canUseAnalytics: planData?.tiene_analytics || false,
+          hasPrioritySupport: planData?.soporte_prioritario || false,
           planName: planNombre,
           planPrice: planPrecio,
           loading: false
-        });
+        };
+
+        console.log('DEBUG - Permisos finales:', permissions);
+        setPermissions(permissions);
 
       } catch (error) {
         console.error('Error en usePlanPermissions:', error);

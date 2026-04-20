@@ -244,10 +244,14 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
         .select('id, monto_apertura, fecha_apertura, empresa_id')
         .eq('empresa_id', empresaIdToUse)
         .eq('estado', 'abierta')
-        .single();
+        .maybeSingle(); // Usar maybeSingle() en lugar de single()
 
       if (cajaError || !cajaData) {
-        console.error('No se encontró caja abierta:', cajaError);
+        console.log('No se encontró caja abierta:', cajaError);
+        
+        // Mostrar notificación toast al usuario usando el sistema existente
+        showToast('No hay caja abierta. Por favor, abre una caja antes de realizar préstamos.', 'error');
+        
         return 0;
       }
 
@@ -751,13 +755,13 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
 
       {/* Tarjetas de Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="text-sm font-medium text-gray-900">Total Prestado</div>
+            <div className="text-sm font-medium text-purple-700">Total Prestado</div>
             <DollarSign className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-purple-900">
               ${totalPrestado.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 mt-1">
@@ -766,13 +770,13 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <Card className="bg-amber-50 border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="text-sm font-medium text-gray-900">Total Pendiente</div>
-            <TrendingUp className="h-4 w-4 text-purple-500" />
+            <div className="text-sm font-medium text-amber-700">Total Pendiente</div>
+            <TrendingUp className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-amber-900">
               ${totalPendiente.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 mt-1">
@@ -781,13 +785,13 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+        <Card className="bg-blue-50 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="text-sm font-medium text-gray-900">Préstamos Activos</div>
-            <Users className="h-4 w-4 text-purple-500" />
+            <div className="text-sm font-medium text-blue-700">Préstamos Activos</div>
+            <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-blue-900">
               {prestamosActivos}
             </div>
             <p className="text-xs text-gray-600 mt-1">
@@ -796,13 +800,13 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-green-500/10 backdrop-blur-sm border border-green-500/20">
+        <Card className="bg-green-50 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="text-sm font-medium text-gray-900">Efectivo en Caja</div>
+            <div className="text-sm font-medium text-green-700">Efectivo en Caja</div>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-900">
               ${efectivoDisponible.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 mt-1">
@@ -813,7 +817,7 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
       </div>
 
       {/* Tabla de Préstamos */}
-      <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+      <Card className="bg-white border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <h3 className="text-lg font-medium text-gray-900">Préstamos Activos</h3>
@@ -846,8 +850,8 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-white/20">
-                <thead className="bg-white/5">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-900">Empleado</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-900">Monto Total</th>
@@ -859,9 +863,9 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-900">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white/5 divide-y divide-white/20">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {prestamosFiltrados.map((prestamo) => (
-                    <tr key={prestamo.id} className="hover:bg-white/10">
+                    <tr key={prestamo.id} className="hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div>
                           <p className="font-medium text-gray-900">{prestamo.empleados?.nombre_completo || 'Empleado sin nombre'}</p>

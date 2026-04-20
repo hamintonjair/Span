@@ -19,7 +19,6 @@ export const useCancelacionAutomatica = () => {
 
     const verificarYCancelarCitasPasadas = async () => {
       try {
-        console.log('🔍 Verificando citas pasadas para cancelación automática (Hook Global)...');
 
         // Obtener fecha y hora actual (JavaScript ya maneja la zona horaria del navegador)
         const ahora = new Date();
@@ -32,7 +31,6 @@ export const useCancelacionAutomatica = () => {
           .eq('estado', 'pendiente');
 
         if (errorConsulta) {
-          console.error('Error consultando citas pendientes (Hook Global):', errorConsulta);
           return;
         }
 
@@ -41,7 +39,6 @@ export const useCancelacionAutomatica = () => {
           return;
         }
 
-        console.log(`📅 Encontradas ${citasPendientes.length} citas pendientes para analizar`);
 
         // Filtrar citas que realmente están pasadas (más de 15 minutos de retraso)
         const citasPasadas = citasPendientes.filter((cita: Cita) => {
@@ -53,27 +50,16 @@ export const useCancelacionAutomatica = () => {
           
           // Si la hora actual es mayor al límite, la cita está pasada
           const estaPasada = ahora > limite;
+     
           
-          // Logging detallado para depuración
-          console.log('🔍 Analizando cita:', {
-            id: cita.id,
-            fechaOriginal: cita.fecha,
-            fechaCita: fechaCita.toLocaleString('es-CO'),
-            limite: limite.toLocaleString('es-CO'),
-            ahora: ahora.toLocaleString('es-CO'),
-            estaPasada: estaPasada,
-            comparacion: `${ahora.getTime()} > ${limite.getTime()} = ${estaPasada}`
-          });
           
           return estaPasada;
         });
 
         if (citasPasadas.length === 0) {
-          console.log('✅ No hay citas pasadas para cancelar (Hook Global)');
           return;
         }
 
-        console.log(`📅 Found ${citasPasadas.length} citas pasadas para cancelar (Hook Global)`);
 
         // Formatear fecha y hora actual para notas
         const fechaActual = ahora.toLocaleString('es-CO', {

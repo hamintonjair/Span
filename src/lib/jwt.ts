@@ -12,7 +12,13 @@ export interface JWTPayload {
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
   try {
-    const token = await new SignJWT(payload)
+    const token = await new SignJWT({
+      userId: payload.userId,
+      email: payload.email,
+      rol: payload.rol,
+      empresa_id: payload.empresa_id,
+      nombre: payload.nombre
+    })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime(process.env.JWT_EXPIRES_IN || '7d')
@@ -27,10 +33,31 @@ export async function signJWT(payload: JWTPayload): Promise<string> {
 
 export async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
+    console.log('Verificando JWT con secret length:', JWT_SECRET.length);
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as JWTPayload;
+    console.log('JWT verificado exitosamente');
+    
+    // Convertir el payload al tipo JWTPayload esperado
+    const jwtPayload: JWTPayload = {
+      userId: payload.userId as string,
+      email: payload.email as string,
+      rol: payload.rol as string,
+      empresa_id: payload.empresa_id as string | null,
+      nombre: payload.nombre as string
+    };
+    
+    return jwtPayload;
   } catch (error) {
-    console.error('Error verifying JWT:', error);
+    console.error('Error verificando JWT:', error);
+    if (error instanceof Error) {
+      if (error.message.includes('expired')) {
+        console.log('JWT expirado');
+      } else if (error.message.includes('signature')) {
+        console.log('Error de firma JWT - posible mismatch de secret');
+      } else if (error.message.includes('malformed')) {
+        console.log('JWT malformado');
+      }
+    }
     return null;
   }
 }

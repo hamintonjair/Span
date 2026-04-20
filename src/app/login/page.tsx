@@ -107,17 +107,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <Card>
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-amber-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-bold text-2xl">BP</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-amber-500 mb-2">
               {showForgotPassword ? 'Recuperar Contraseña' : 'Iniciar Sesión'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-amber-500">
               {showForgotPassword 
                 ? 'Te enviaremos un enlace para restablecer tu contraseña'
                 : 'Bienvenido de nuevo a BeautyPro'

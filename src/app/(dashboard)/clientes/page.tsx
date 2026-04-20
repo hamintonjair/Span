@@ -14,7 +14,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 
 // Implementación simple de toast para evitar errores
@@ -62,6 +63,8 @@ interface Cliente {
   telefono: string;
   email: string;
   direccion: string;
+  fecha_nacimiento?: string | null;
+  es_vip?: boolean;
   estado: 'activo' | 'inactivo';
   created_at: string;
   updated_at: string;
@@ -73,6 +76,8 @@ interface ClienteFormData {
   telefono: string;
   email: string;
   direccion: string;
+  fecha_nacimiento?: string | null;
+  es_vip?: boolean;
   estado: 'activo' | 'inactivo';
 }
 
@@ -93,6 +98,8 @@ export default function ClientesPage() {
     telefono: '',
     email: '',
     direccion: '',
+    fecha_nacimiento: null,
+    es_vip: false,
     estado: 'activo'
   });
   const [creating, setCreating] = useState(false);
@@ -100,6 +107,8 @@ export default function ClientesPage() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
   // Paginación
   const [itemsPerPage] = useState(10);
@@ -264,11 +273,24 @@ export default function ClientesPage() {
 
   // Función para manejar el cambio de inputs
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const target = e.target;
+    const name = target.name;
+    
+    // Manejar checkboxes (como es_vip)
+    if (target.type === 'checkbox') {
+      const checked = (target as HTMLInputElement).checked;
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+    } else {
+      // Manejar inputs normales (text, email, tel, date, select, textarea)
+      const value = target.value;
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Resetear paginación al buscar
@@ -286,9 +308,17 @@ export default function ClientesPage() {
       telefono: cliente.telefono,
       email: cliente.email,
       direccion: cliente.direccion,
+      fecha_nacimiento: cliente.fecha_nacimiento,
+      es_vip: cliente.es_vip || false,
       estado: cliente.estado
     });
     setShowEditModal(true);
+  };
+
+  // Función para ver detalles del cliente
+  const verDetallesCliente = (cliente: Cliente) => {
+    setSelectedCliente(cliente);
+    setShowDetailsModal(true);
   };
 
   // Función para eliminar cliente
@@ -536,7 +566,18 @@ export default function ClientesPage() {
                     currentClientes.map((cliente) => (
                       <tr key={cliente.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{cliente.nombre}</div>
+                          <div className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900">{cliente.nombre}</div>
+                            {cliente.es_vip && (
+                              <div className="ml-2 flex items-center">
+                                <span className="text-yellow-500" title="Cliente VIP">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                  </svg>
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{cliente.cedula}</div>
@@ -563,6 +604,13 @@ export default function ClientesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => verDetallesCliente(cliente)}
+                            >
+                              <EyeIcon className="w-4 h-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -633,6 +681,7 @@ export default function ClientesPage() {
                       telefono: '',
                       email: '',
                       direccion: '',
+                      es_vip: false,
                       estado: 'activo'
                     });
                   }}
@@ -713,6 +762,35 @@ export default function ClientesPage() {
                       required
                     />
                   </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Nacimiento
+                    </label>
+                    <input
+                      type="date"
+                      name="fecha_nacimiento"
+                      value={formData.fecha_nacimiento || ''}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="es_vip"
+                        checked={formData.es_vip || false}
+                        onChange={handleInputChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                    </label>
+                    <label className="ml-3 text-sm font-medium text-gray-700">
+                      Marcar como Cliente VIP
+                    </label>
+                  </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
@@ -775,6 +853,7 @@ export default function ClientesPage() {
                       telefono: '',
                       email: '',
                       direccion: '',
+                      es_vip: false,
                       estado: 'activo'
                     });
                   }}
@@ -856,6 +935,34 @@ export default function ClientesPage() {
                     />
                   </div>
                   
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Nacimiento
+                    </label>
+                    <input
+                      type="date"
+                      name="fecha_nacimiento"
+                      value={formData.fecha_nacimiento || ''}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="es_vip"
+                        checked={formData.es_vip || false}
+                        onChange={handleInputChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                    </label>
+                    <label className="ml-3 text-sm font-medium text-gray-700">
+                      Marcar como Cliente VIP
+                    </label>
+                  </div>
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
@@ -885,6 +992,7 @@ export default function ClientesPage() {
                         telefono: '',
                         email: '',
                         direccion: '',
+                        es_vip: false,
                         estado: 'activo'
                       });
                     }}
@@ -938,6 +1046,152 @@ export default function ClientesPage() {
                   disabled={loading}
                 >
                   {loading ? 'Eliminando...' : 'Eliminar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Detalles del Cliente */}
+        {showDetailsModal && selectedCliente && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <EyeIcon className="w-6 h-6 mr-2 text-blue-600" />
+                  Detalles del Cliente
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedCliente(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Información Personal */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <UserGroupIcon className="w-5 h-5 mr-2 text-blue-600" />
+                    Información Personal
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Nombre Completo</p>
+                      <p className="font-medium text-gray-900 flex items-center">
+                        {selectedCliente.nombre}
+                        {selectedCliente.es_vip && (
+                          <span className="ml-2 text-yellow-500" title="Cliente VIP">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Cédula</p>
+                      <p className="font-medium text-gray-900">{selectedCliente.cedula}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Fecha de Nacimiento</p>
+                      <p className="font-medium text-gray-900">
+                        {selectedCliente.fecha_nacimiento 
+                          ? new Date(selectedCliente.fecha_nacimiento).toLocaleDateString('es-MX')
+                          : 'No registrada'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Estado</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedCliente.estado === 'activo'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedCliente.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información de Contacto */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <PencilIcon className="w-5 h-5 mr-2 text-blue-600" />
+                    Información de Contacto
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Teléfono</p>
+                      <p className="font-medium text-gray-900">{selectedCliente.telefono}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium text-gray-900">{selectedCliente.email}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-500">Dirección</p>
+                      <p className="font-medium text-gray-900">{selectedCliente.direccion}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información del Sistema */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <ChevronRightIcon className="w-5 h-5 mr-2 text-blue-600" />
+                    Información del Sistema
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">ID de Cliente</p>
+                      <p className="font-medium text-gray-900 text-sm font-mono">{selectedCliente.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Fecha de Registro</p>
+                      <p className="font-medium text-gray-900">
+                        {new Date(selectedCliente.created_at).toLocaleString('es-MX')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Última Actualización</p>
+                      <p className="font-medium text-gray-900">
+                        {new Date(selectedCliente.updated_at).toLocaleString('es-MX')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Tipo de Cliente</p>
+                      <p className="font-medium text-gray-900">
+                        {selectedCliente.es_vip ? (
+                          <span className="flex items-center text-yellow-600">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                            Cliente VIP
+                          </span>
+                        ) : (
+                          <span className="text-gray-600">Cliente Regular</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedCliente(null);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Cerrar
                 </Button>
               </div>
             </div>

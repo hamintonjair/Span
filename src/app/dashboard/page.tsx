@@ -18,7 +18,7 @@ export default function DashboardRedirect() {
 
     // Redirigir según el rol del usuario
     if (user.rol === 'admin_global') {
-      router.replace('/admin-dashboard');
+      router.replace('/dashboard-admin');
     } else if (user.empresa_id) {
       router.replace('/dashboard-empresa');
     } else {
