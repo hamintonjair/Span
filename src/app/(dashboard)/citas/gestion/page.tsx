@@ -105,6 +105,72 @@ export default function GestionCitasPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Función para generar venta manualmente para citas completadas
+  const generarVentaParaCitaCompletada = async (cita: any) => {
+    if (!user?.empresa_id) {
+      mostrarToast('Error: usuario no autenticado', 'error');
+      return;
+    }
+
+    try {
+      // Cargar datos necesarios de la cita
+      const { data: citaCompleta, error: citaError } = await (supabase as any)
+        .from('citas')
+        .select(`
+          *,
+          clientes!cliente_id(id, nombre, cedula, email, telefono),
+          empleados!empleado_id(id, nombre_completo)
+        `)
+        .eq('id', cita.id)
+        .eq('empresa_id', user.empresa_id)
+        .single();
+
+      if (citaError || !citaCompleta) {
+        console.error('Error cargando cita completa:', citaError);
+        mostrarToast('Error al cargar datos de la cita', 'error');
+        return;
+      }
+
+      // Generar número de factura
+      const numFactura = Math.floor(100000000 + Math.random() * 900000000).toString();
+      
+      // Crear venta usando el total estimado de la cita
+      const ventaData = {
+        empresa_id: user.empresa_id,
+        cliente_id: citaCompleta.cliente_id,
+        vendedor_id: user.id, // Usuario del sistema
+        cita_id: cita.id,
+        subtotal: citaCompleta.total_estimado,
+        impuestos: 0, // Sin IVA para simplificar
+        total: citaCompleta.total_estimado,
+        metodo_pago: 'efectivo',
+        estado: 'completada',
+        fecha: new Date().toISOString(),
+        numero_factura: numFactura
+      };
+
+      const { data: ventaCreada, error: ventaError } = await (supabase as any)
+        .from('ventas')
+        .insert(ventaData)
+        .select()
+        .single();
+
+      if (ventaError) {
+        console.error('Error creando venta:', ventaError);
+        mostrarToast('Error al crear la venta', 'error');
+        return;
+      }
+      mostrarToast('Factura generada exitosamente', 'success');
+      
+      // Abrir la factura en nueva pestaña
+      window.open(`/ventas/imprimir/${ventaCreada.id}`, '_blank');
+      
+    } catch (error) {
+      console.error('Error generando venta para cita completada:', error);
+      mostrarToast('Error al generar la factura', 'error');
+    }
+  };
+
   // Declarar función cargarDatos antes de cualquier useEffect
   const cargarDatos = async () => {
     if (!user || !user.empresa_id) {
@@ -114,8 +180,6 @@ export default function GestionCitasPage() {
 
     setLoadingData(true);
     try {
-      console.log('🔄 Cargando datos de gestión de citas...');
-
       // Cargar clientes
       const { data: clientesData, error: clientesError } = await (supabase as any)
         .from('clientes')
@@ -128,7 +192,6 @@ export default function GestionCitasPage() {
         throw clientesError;
       }
       setClientes(clientesData || []);
-      console.log('✅ Clientes cargados:', clientesData?.length || 0);
 
       // Cargar empleados
       const { data: empleadosData, error: empleadosError } = await (supabase as any)
@@ -143,7 +206,6 @@ export default function GestionCitasPage() {
         throw empleadosError;
       }
       setEmpleados(empleadosData || []);
-      console.log('✅ Empleados cargados:', empleadosData?.length || 0);
 
       // Cargar servicios
       const { data: serviciosData, error: serviciosError } = await (supabase as any)
@@ -158,7 +220,6 @@ export default function GestionCitasPage() {
         throw serviciosError;
       }
       setServicios(serviciosData || []);
-      console.log('✅ Servicios cargados:', serviciosData?.length || 0);
 
       // Cargar TODAS las citas (sin filtro de estado)
       const { data: citasData, error: citasError } = await (supabase as any)
@@ -172,12 +233,6 @@ export default function GestionCitasPage() {
         throw citasError;
       }
       setCitas(citasData || []);
-      console.log('✅ Citas cargadas (todas):', citasData?.length || 0);
-      
-      // Mostrar cuántas citas están completadas
-      const citasCompletadas = citasData?.filter((cita: any) => cita.estado === 'completada' || cita.estado === 'finalizado') || [];
-      console.log('📊 Citas completadas:', citasCompletadas.length);
-      console.log('📋 IDs de citas completadas:', citasCompletadas.map((c: any) => ({ id: c.id, estado: c.estado })));
 
     } catch (error) {
       console.error('❌ Error cargando datos:', error);
@@ -217,7 +272,6 @@ export default function GestionCitasPage() {
   useEffect(() => {
     const manejarCancelacionAutomatica = (event: CustomEvent) => {
       const { cantidad, fecha } = event.detail;
-      console.log('📅 Recibido evento de cancelación automática en gestión:', { cantidad, fecha });
       
       // Recargar datos para actualizar la lista
       cargarDatos();
@@ -365,10 +419,6 @@ export default function GestionCitasPage() {
         return;
       }
 
-      console.log('Caja abierta verificada:', cajaActiva.id);
-
-      console.log('🔄 Iniciando atención para cita:', citaId);
-
       // Cambiar estado a 'en_atencion'
       const { error } = await (supabase as any)
         .from('citas')
@@ -382,8 +432,6 @@ export default function GestionCitasPage() {
         console.error('Error actualizando estado de cita:', error);
         throw error;
       }
-
-      console.log('✅ Estado de cita actualizado a "en_atencion"');
 
       // Recargar datos
       await cargarDatos();
@@ -417,10 +465,6 @@ export default function GestionCitasPage() {
   };
 
   const verDetalles = async (cita: Cita) => {
-    console.log('🔍 Ver detalles de cita:', cita);
-    console.log('🔍 Estado:', cita.estado);
-    console.log('🔍 Cita ID:', cita.id);
-    
     try {
       // Cargar servicios adicionales y productos de la cita
       const [serviciosAdicionales, productosAdicionales] = await Promise.all([
@@ -463,6 +507,11 @@ export default function GestionCitasPage() {
 
   // Filtrar citas
   const citasFiltradas = citas.filter(cita => {
+    // Excluir citas completadas o canceladas para estilistas
+    if (user?.rol === 'estilista' && (cita.estado === 'completada' || cita.estado === 'cancelada')) {
+      return false;
+    }
+    
     const cumpleEstado = filtroEstado === 'todos' || cita.estado === filtroEstado;
     const citaConDatos = getCitaConDatos(cita);
     const cumpleBusqueda = !busqueda || 
@@ -955,39 +1004,57 @@ export default function GestionCitasPage() {
                       Cerrar
                     </Button>
                     {/* Botón para reimprimir factura si la cita está completada */}
-                    {(() => {
-                      console.log('🔍 Evaluando botón reimprimir:', {
-                        estado: selectedCita.estado,
-                        cita_id: selectedCita.id,
-                        mostrar: (selectedCita.estado === 'completada' || selectedCita.estado === 'finalizado')
-                      });
-                      
-                      // Mostrar botón para citas completadas
-                      return (selectedCita.estado === 'completada' || selectedCita.estado === 'finalizado');
-                    })() && (
+                    {(selectedCita.estado === 'completada' || selectedCita.estado === 'finalizado') && (
                       <Button
                         variant="outline"
                         onClick={async () => {
-                          console.log('🖨️ Iniciando reimprimir factura...');
-                          console.log('📋 Cita ID:', selectedCita.id);
-                          
                           // Siempre buscar venta por cita_id (relación correcta)
                           try {
                             const { data: ventaData, error: ventaError } = await (supabase as any)
                               .from('ventas')
-                              .select('id, numero_factura')
+                              .select('id, numero_factura, empresa_id')
                               .eq('cita_id', selectedCita.id)
-                              .maybeSingle();
+                              .eq('empresa_id', user?.empresa_id) // Agregar filtro por empresa
+                              .limit(1)
+                              .single();
                             
-                            console.log('Resultado búsqueda venta:', { ventaData, ventaError });
+                            // Si hay error o no encuentra con filtro de empresa, intentar sin él
+                            if (!ventaData || ventaError) {
+                              const { data: ventaData2, error: ventaError2 } = await (supabase as any)
+                                .from('ventas')
+                                .select('id, numero_factura, empresa_id')
+                                .eq('cita_id', selectedCita.id)
+                                .limit(1)
+                                .single();
+                              
+                              
+                              if (ventaData2) {
+                                mostrarToast(`Error: La venta pertenece a otra empresa (${ventaData2.empresa_id})`, 'error');
+                                return;
+                              }
+                            }
                             
                             if (ventaData) {
-                              console.log('Venta encontrada:', ventaData);
-                              console.log('Número de factura:', ventaData.numero_factura);
+                            
                               window.open(`/ventas/imprimir/${ventaData.id}`, '_blank');
                             } else {
                               console.error('No se encontró venta para la cita:', selectedCita.id);
-                              mostrarToast('No se encontró factura asociada a esta cita', 'error');
+                              
+                              // Mostrar mensaje específico según el estado de la cita
+                              if (selectedCita.estado === 'cancelada' || selectedCita.estado === 'anulada') {
+                                mostrarToast('Esta cita fue cancelada, no se generó factura', 'info');
+                              } else if (selectedCita.estado === 'pendiente' || selectedCita.estado === 'confirmada') {
+                                mostrarToast('Esta cita aún no ha sido completada, no hay factura disponible', 'info');
+                              } else if (selectedCita.estado === 'en_atencion') {
+                                mostrarToast('Esta cita está en atención, complete la atención para generar factura', 'info');
+                              } else if (selectedCita.estado === 'completada' || selectedCita.estado === 'finalizado') {
+                                // Ofrecer generar venta manualmente para citas completadas sin venta
+                                if (window.confirm('Esta cita está completada pero no tiene factura asociada. ¿Desea generar la factura ahora?')) {
+                                  await generarVentaParaCitaCompletada(selectedCita);
+                                }
+                              } else {
+                                mostrarToast('No se encontró factura asociada a esta cita. Puede que la cita no haya sido completada correctamente', 'error');
+                              }
                             }
                           } catch (error) {
                             console.error('Error buscando venta:', error);

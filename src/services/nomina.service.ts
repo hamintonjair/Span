@@ -34,7 +34,6 @@ export async function calcularNominaEmpleado(
   try {
     const supabase = createClient();
     
-    // Obtener información del empleado
     const { data: empleado, error: empleadoError } = await supabase
       .from('empleados')
       .select('*')
@@ -49,26 +48,20 @@ export async function calcularNominaEmpleado(
       };
     }
 
-    // 2. Obtener ventas del empleado en el período
-    // NOTA: Esta consulta se actualizará cuando creemos la tabla ventas
     const { data: ventas, error: errorVentas } = await supabase
-      .from('ventas') // Tabla que crearemos luego
+      .from('ventas')
       .select('monto_total')
       .eq('empleado_id', empleadoId)
       .eq('estado', 'completada')
       .gte('fecha', fechaInicio)
       .lte('fecha', fechaFin);
 
-    // Temporal: si la tabla no existe, asumimos 0 ventas
     const totalVentas = ventas?.reduce((sum: number, venta: any) => sum + venta.monto_total, 0) || 0;
 
-    // 3. Calcular comisiones
     const comisionesVentas = totalVentas * (empleado.porcentaje_comision / 100);
 
-    // 4. Calcular total bruto
     const totalBruto = empleado.sueldo_base + comisionesVentas;
 
-    // Obtener préstamos activos del empleado
     const { data: prestamos, error: prestamosError } = await supabase
       .from('prestamos')
       .select('*')
@@ -83,17 +76,12 @@ export async function calcularNominaEmpleado(
     let descuentoPrestamo = 0;
     let prestamoActualizado: Prestamo | undefined;
 
-    // 6. Procesar préstamos activos
     if (prestamos && prestamos.length > 0) {
-      // Tomar el primer préstamo activo (lógica puede ajustarse)
       const prestamoActivo = prestamos[0];
       
-      // Verificar si hay saldo pendiente para descontar
       if (prestamoActivo.saldo_pendiente > 0) {
-        // La cuota a descontar es el menor entre la cuota mensual y el saldo pendiente
         descuentoPrestamo = Math.min(prestamoActivo.cuota_mensual, prestamoActivo.saldo_pendiente);
         
-        // Actualizar saldo pendiente del préstamo
         const nuevoSaldo = prestamoActivo.saldo_pendiente - descuentoPrestamo;
         const nuevoEstado = nuevoSaldo <= 0 ? 'pagado' : 'activo';
 
@@ -116,7 +104,6 @@ export async function calcularNominaEmpleado(
       }
     }
 
-    // 7. Calcular total neto
     const totalNeto = totalBruto - descuentoPrestamo;
 
     const detalleNomina = {

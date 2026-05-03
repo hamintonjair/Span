@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { registrarLog } from '@/lib/audit';
 import { 
   TagIcon, 
   MagnifyingGlassIcon, 
@@ -191,6 +192,23 @@ export default function CategoriasPage() {
         }
         
         showToast('Categoría actualizada correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ACTUALIZAR_CATEGORIA',
+          modulo: 'CATEGORIAS',
+          detalles: {
+            categoria_id: editingCategoria.id,
+            nombre_anterior: editingCategoria.nombre,
+            nombre_nuevo: formData.nombre,
+            descripcion_anterior: editingCategoria.descripcion,
+            descripcion_nueva: formData.descripcion,
+            actualizado_por: user?.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
       } else {
         // Crear nueva categoría
         const categoriaData = {
@@ -213,6 +231,21 @@ export default function CategoriasPage() {
         }
         
         showToast('Categoría creada correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CREAR_CATEGORIA',
+          modulo: 'CATEGORIAS',
+          detalles: {
+            nombre: formData.nombre,
+            descripcion: formData.descripcion,
+            empresa_id: user?.empresa_id,
+            creado_por: user?.id,
+            fecha_creacion: new Date().toISOString()
+          }
+        });
       }
       
       setShowModal(false);
@@ -266,6 +299,20 @@ export default function CategoriasPage() {
       }
       
       showToast('Categoría eliminada exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_CATEGORIA',
+        modulo: 'CATEGORIAS',
+        detalles: {
+          categoria_id: categoriaToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadCategorias();
     } catch (error) {
       console.error('Error inesperado:', error);

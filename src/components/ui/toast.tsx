@@ -11,6 +11,10 @@ interface Toast {
 
 interface ToastContextType {
   showToast: (message: string, type?: Toast['type'], duration?: number) => void;
+  success: (message: string, duration?: number) => void;
+  error: (message: string, duration?: number) => void;
+  warning: (message: string, duration?: number) => void;
+  info: (message: string, duration?: number) => void;
 }
 
 const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
@@ -35,6 +39,18 @@ export function useToast() {
         } catch (e) {
           console.error('Error showing fallback toast:', e);
         }
+      },
+      success: (message: string, duration?: number) => {
+        console.log(`Toast [SUCCESS]: ${message}`);
+      },
+      error: (message: string, duration?: number) => {
+        console.error(`Toast [ERROR]: ${message}`);
+      },
+      warning: (message: string, duration?: number) => {
+        console.warn(`Toast [WARNING]: ${message}`);
+      },
+      info: (message: string, duration?: number) => {
+        console.log(`Toast [INFO]: ${message}`);
       }
     };
   }
@@ -59,8 +75,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
+  // Métodos de conveniencia
+  const success = (message: string, duration?: number) => showToast(message, 'success', duration);
+  const error = (message: string, duration?: number) => showToast(message, 'error', duration);
+  const warning = (message: string, duration?: number) => showToast(message, 'warning', duration);
+  const info = (message: string, duration?: number) => showToast(message, 'info', duration);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </ToastContext.Provider>
@@ -159,3 +181,19 @@ export const toast = {
     console.log('Toast info:', message);
   }
 };
+
+// Exportar showToast para compatibilidad
+export function showToast(message: string, type: Toast['type'] = 'success', duration?: number) {
+  console.log(`Toast [${type.toUpperCase()}]: ${message}`);
+  
+  // Intentar mostrar notificación nativa como fallback
+  if (typeof window !== 'undefined') {
+    if (type === 'error') {
+      console.error(message);
+    } else if (type === 'warning') {
+      console.warn(message);
+    } else {
+      console.log(message);
+    }
+  }
+}

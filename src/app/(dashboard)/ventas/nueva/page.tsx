@@ -127,9 +127,6 @@ export default function VentasNuevaPage() {
   // Verificar si hay caja abierta
   const verificarCajaAbierta = async () => {
     try {
-      console.log('🔍 Verificando caja abierta para usuario:', user?.id);
-      console.log('🏢 Empresa ID:', user?.empresa_id);
-      
       // @ts-ignore - Ignorar errores de TypeScript para consulta de caja
       const { data: cajaData, error } = await supabase
         .from('cajas')
@@ -139,23 +136,16 @@ export default function VentasNuevaPage() {
         .eq('empresa_id', user?.empresa_id as any)
         .single();
 
-      console.log('📦 Resultado de búsqueda de caja:', { cajaData, error });
-
       if (error && error.code !== 'PGRST116') {
         console.error('Error verificando caja:', error);
       }
 
       setCajaAbierta(cajaData);
-      console.log('✅ Estado de cajaAbierta actualizado a:', cajaData);
-      
 
       // Si no hay caja abierta, mostrar modal elegante
       if (!cajaData) {
-        console.log('❌ No se encontró caja abierta, mostrando modal');
         // No redirigir automáticamente, mostrar modal
         setCajaAbierta(null);
-      } else {
-        console.log('✅ Caja abierta encontrada:', cajaData);
       }
     } catch (error) {
       console.error('Error verificando caja abierta:', error);
@@ -228,7 +218,6 @@ export default function VentasNuevaPage() {
         .gt('stock', 0) // ← SOLO PRODUCTOS CON STOCK MAYOR A 0
         .order('nombre');
 
-      console.log('Productos cargados (con stock > 0):', { data, error });
       if (error) throw error;
       setProductos(data || []);
     } catch (error) {
@@ -247,7 +236,6 @@ export default function VentasNuevaPage() {
         .eq('estado', 'activo')
         .order('nombre');
 
-      console.log('Clientes cargados:', { data, error });
       if (error) throw error;
       setClientes(data || []);
     } catch (error) {
@@ -357,7 +345,6 @@ export default function VentasNuevaPage() {
     try {
       // Generar número de factura aleatorio de 9 dígitos
       const numFactura = Math.floor(100000000 + Math.random() * 900000000).toString();
-      console.log('🔢 Número de factura generado:', numFactura);
     
       // Insertar venta principal
      
@@ -376,8 +363,6 @@ export default function VentasNuevaPage() {
         fecha: new Date().toISOString(),
         numero_factura: numFactura // Agregar número de factura
       };
-      
-      console.log('Venta a insertar:', ventaParaInsertar);
       
       const { data: ventaData, error: ventaError } = await supabase
         .from('ventas')
@@ -408,8 +393,6 @@ export default function VentasNuevaPage() {
         throw new Error('No se pudo obtener el ID de la venta generada');
       }
 
-      console.log('🔍 DEBUG - Venta creada con ID:', (ventaData as any).id);
-
       // Registrar movimientos de inventario y actualizar stock
       const movimientosExitosos = [];
       for (const item of carrito) {
@@ -417,11 +400,9 @@ export default function VentasNuevaPage() {
           try {
             // 1. Obtener stock actual del producto
             const stockActual = item.producto.stock;
-            console.log(`🔍 DEBUG - Stock actual de ${item.producto.nombre}:`, stockActual);
             
             // 2. Calcular nuevo stock
             const nuevoStock = stockActual - item.cantidad;
-            console.log(`🔍 DEBUG - Nuevo stock calculado:`, nuevoStock);
             
             // 3. Registrar movimiento en movimientos_inventario con stock_anterior y stock_nuevo
             const movimientoData = {
@@ -435,8 +416,6 @@ export default function VentasNuevaPage() {
               created_at: new Date().toISOString()
             };
 
-            console.log('🔍 DEBUG - Insertando movimiento:', movimientoData);
-
             const { error: movimientoError } = await (supabase as any)
               .from('movimientos_inventario')
               .insert(movimientoData as any);
@@ -446,7 +425,6 @@ export default function VentasNuevaPage() {
               // CONTINUAR AUNQUE EL MOVIMIENTO FALLE - La venta ya está hecha
             } else {
               movimientosExitosos.push(item.producto.id);
-              console.log('✅ Movimiento registrado para producto:', item.producto.id);
               
               // 4. Actualizar stock del producto (CRÍTICO) - EL DESCUENTO REAL
               const { error: updateError } = await (supabase as any)
@@ -459,8 +437,6 @@ export default function VentasNuevaPage() {
               if (updateError) {
                 console.error('Error actualizando stock:', updateError);
                 throw updateError; // ← SÍ lanzar error si falla el stock
-              } else {
-                console.log(`✅ Stock actualizado de ${stockActual} a ${nuevoStock}`);
               }
             }
 
@@ -470,8 +446,6 @@ export default function VentasNuevaPage() {
           }
         }
       }
-
-      console.log(`🔍 DEBUG - Movimientos exitosos: ${movimientosExitosos.length}/${carrito.length}`);
 
       // Mensaje de éxito con información de movimientos
       if (movimientosExitosos.length === carrito.length) {
@@ -483,7 +457,6 @@ export default function VentasNuevaPage() {
       }
       
       // Sincronizar interfaz - Refrescar productos para mostrar stock actualizado
-      console.log('🔄 DEBUG - Refrescando productos para sincronizar stock...');
       await cargarProductos(); // ← RECARGAR PRODUCTOS CON STOCK ACTUALIZADO
       
       // Limpiar carrito y resetear estados
@@ -494,7 +467,6 @@ export default function VentasNuevaPage() {
       setEfectivoRecibido('');
 
       // Redirigir a página de impresión con el ID de la venta
-      console.log('🖨️ Redirigiendo a página de impresión...');
       window.location.href = `/ventas/imprimir/${(ventaData as any).id}`;
 
     } catch (error) {

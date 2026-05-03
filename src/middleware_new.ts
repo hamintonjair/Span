@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  console.log('--- MIDDLEWARE CHECK ---', request.nextUrl.pathname)
 
   let supabaseResponse = NextResponse.next({
     request,
@@ -34,14 +33,12 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  console.log('MIDDLEWARE: Session?', session ? 'CON SESION' : 'SIN SESION')
 
   // Rutas públicas que no requieren autenticación
-  const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/auth/callback', '/test-flow']
+  const publicRoutes = ['/login', '/register', '/registro', '/forgot-password', '/reset-password', '/auth/callback', '/test-flow']
   
   // Si no hay sesión y no es una ruta pública, redirigir a login
   if (!session && !publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-    console.log('MIDDLEWARE: Sin sesión, redirigiendo a login')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -49,7 +46,6 @@ export async function middleware(request: NextRequest) {
 
   // Si hay sesión y está en login, redirigir a dashboard
   if (session && request.nextUrl.pathname === '/login') {
-    console.log('MIDDLEWARE: Con sesión en login, redirigiendo a dashboard')
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

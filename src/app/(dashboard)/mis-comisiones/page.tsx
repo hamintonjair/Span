@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { registrarLog } from '@/lib/audit';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Componente Badge inline para evitar problemas de importación
@@ -68,13 +69,10 @@ export default function MisComisionesPage() {
   // Función para obtener nombres de empleados
   const cargarNombresEmpleados = async () => {
     try {
-      console.log('Cargando empleados para empresa:', user?.empresa_id);
       const { data: emps, error } = await supabase
         .from('empleados')
         .select('id, nombre_completo, cedula, sueldo_base, empresa_id')
         .eq('empresa_id', user?.empresa_id);
-      
-      console.log('Resultado consulta empleados:', { data: emps, error });
       
       const nombresMap: Record<string, any> = {};
       emps?.forEach((emp: any) => {
@@ -85,7 +83,6 @@ export default function MisComisionesPage() {
         };
       });
       
-      console.log('Mapa de nombres creado:', nombresMap);
       setNombresEmpleados(nombresMap);
     } catch (error) {
       console.error('Error cargando nombres de empleados:', error);
@@ -304,6 +301,23 @@ export default function MisComisionesPage() {
         alert('Error al eliminar comisiones');
       } else {
         alert('Comisiones eliminadas correctamente');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ELIMINAR_COMISION',
+          modulo: 'COMISIONES',
+          detalles: {
+            filtro_aplicado: filtroEstado,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            eliminado_por: user?.id,
+            rol_usuario: user?.rol,
+            fecha_eliminacion: new Date().toISOString()
+          }
+        });
+        
         setItemOffset(0);
         cargarComisiones();
       }

@@ -47,7 +47,6 @@ function MensajeGlobalBanner() {
 
   useEffect(() => {
     setMounted(true);
-    console.log('Cargando mensaje global...'); // Debug
     cargarMensajeGlobal();
   }, []);
 
@@ -63,7 +62,6 @@ function MensajeGlobalBanner() {
         return;
       }
 
-      console.log('Mensaje global cargado:', data?.mensaje_global); // Debug
       setMensajeGlobal(data?.mensaje_global || null);
     } catch (error) {
       console.error('Error en cargarMensajeGlobal:', error);
@@ -75,7 +73,6 @@ function MensajeGlobalBanner() {
   // Memoizar el banner para evitar duplicación
   const bannerContent = useMemo(() => {
     if (!mounted || loading || !mensajeGlobal) {
-      console.log('No renderizar banner:', { mounted, loading, mensajeGlobal }); // Debug
       return null;
     }
 
@@ -131,6 +128,9 @@ export default function DashboardEmpresaPage() {
   const [ingresosHoy, setIngresosHoy] = useState<number>(0);
   const [loadingCharts, setLoadingCharts] = useState(true);
   const [filtroVentas, setFiltroVentas] = useState<'semana' | 'hoy' | 'mes' | 'anio'>('hoy');
+  const [comisionesPendientes, setComisionesPendientes] = useState<number>(0);
+  const [nuevosClientes, setNuevosClientes] = useState<number>(0);
+  const [citasHoy, setCitasHoy] = useState<any[]>([]);
 
   // Función para obtener ingresos de hoy
   const loadIngresosHoy = async () => {
@@ -153,7 +153,21 @@ export default function DashboardEmpresaPage() {
         .lte('fecha_cierre', endOfDay.toISOString());
 
       if (cajasError) {
-        console.error('Error cargando cajas cerradas de hoy:', cajasError);
+        return;
+      }
+
+      // Obtener ventas generales (sin cita_id)
+      const { data: ventasGenerales, error: ventasGeneralesError } = await supabase
+        .from('ventas')
+        .select('total')
+        .eq('empresa_id', user.empresa_id)
+        .eq('estado', 'completada')
+        .is('cita_id', null)
+        .gte('fecha', startOfDay.toISOString())
+        .lte('fecha', endOfDay.toISOString());
+
+      if (ventasGeneralesError) {
+        console.error('Error cargando ventas de hoy:', ventasGeneralesError);
         return;
       }
 
@@ -177,7 +191,6 @@ export default function DashboardEmpresaPage() {
       const ingresosTotales = totalCajas + totalVentas;
 
       setIngresosHoy(ingresosTotales);
-      console.log('Ingresos de hoy calculados:', ingresosTotales);
     } catch (error) {
       console.error('Error en loadIngresosHoy:', error);
     }
@@ -244,8 +257,7 @@ export default function DashboardEmpresaPage() {
         .gte('fecha_cierre', startDate.toISOString())
         .lte('fecha_cierre', endDate.toISOString());
 
-      console.log(`Cajas cerradas filtradas por ${filtro}:`, cajasCerradas);
-      console.log('Error en cajas cerradas:', cajasError);
+     
 
       if (cajasError) {
         console.error(`Error cargando cajas cerradas ${filtro}:`, cajasError);
@@ -370,9 +382,6 @@ export default function DashboardEmpresaPage() {
         .gte('fecha', startDate.toISOString())
         .lte('fecha', endDate.toISOString());
 
-      console.log(`Ventas de citas completadas filtradas por ${filtro}:`, ventasCitas);
-      console.log('Error en ventas de citas completadas:', ventasCitasError);
-
       if (ventasCitasError) {
         console.error(`Error cargando ventas de citas completadas ${filtro}:`, ventasCitasError);
         return;
@@ -427,7 +436,6 @@ export default function DashboardEmpresaPage() {
     if (!user?.empresa_id) return;
     
     try {
-      console.log('Cargando alertas de inventario para empresa:', user.empresa_id);
       
       // Obtener todos los productos de la empresa
       const { data: productos, error } = await supabase
@@ -436,15 +444,10 @@ export default function DashboardEmpresaPage() {
         .eq('empresa_id', user.empresa_id)
         .order('stock', { ascending: true });
 
-      console.log('Todos los productos:', productos);
-      console.log('Error en productos:', error);
-      console.log('Detalles del error:', JSON.stringify(error, null, 2));
+    
 
       if (error) {
-        console.error('Error cargando productos:', error);
-        console.error('Código de error:', error.code);
-        console.error('Mensaje de error:', error.message);
-        console.error('Detalles:', error.details);
+       
         return;
       }
 
@@ -453,10 +456,8 @@ export default function DashboardEmpresaPage() {
         producto => producto.stock <= producto.stock_minimo
       );
 
-      console.log('Productos con bajo stock:', productosConBajoStock);
       setAlertasInventario(productosConBajoStock);
     } catch (error) {
-      console.error('Error en loadAlertasInventario:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
     }
   };
@@ -466,46 +467,49 @@ export default function DashboardEmpresaPage() {
     if (!user?.empresa_id) return;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const startOfDay = new Date(today + 'T00:00:00.000Z').toISOString();
-      const endOfDay = new Date(today + 'T23:59:59.999Z').toISOString();
-
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+      
       const { data: citasData, error: citasError } = await supabase
         .from('citas')
         .select('estado')
         .eq('empresa_id', user.empresa_id)
-        .gte('fecha', startOfDay)
-        .lte('fecha', endOfDay);
+        .gte('fecha', startOfDay.toISOString())
+        .lte('fecha', endOfDay.toISOString());
 
       if (citasError) {
         console.error('Error cargando estado citas:', citasError);
         return;
       }
 
-      // Contar citas por estado
+      // Contar citas por estado exacto
       const estadoCount = {
-        'Finalizadas': 0,
-        'Pendientes': 0,
-        'Canceladas': 0
+        'completada': 0,
+        'pendiente': 0,
+        'cancelada': 0
       };
 
       citasData?.forEach(cita => {
         const estado = cita.estado?.toLowerCase();
-        if (estado === 'completada' || estado === 'finalizado' || estado === 'atendido') {
-          estadoCount['Finalizadas']++;
-        } else if (estado === 'pendiente' || estado === 'confirmada' || estado === 'en_atencion') {
-          estadoCount['Pendientes']++;
-        } else if (estado === 'cancelada' || estado === 'anulada' || estado === 'vencida') {
-          estadoCount['Canceladas']++;
+        if (estado === 'completada') {
+          estadoCount['completada']++;
+        } else if (estado === 'pendiente') {
+          estadoCount['pendiente']++;
+        } else if (estado === 'cancelada') {
+          estadoCount['cancelada']++;
         }
       });
 
       const estadoCitasData = [
-        { nombre: 'Finalizadas', valor: estadoCount['Finalizadas'], color: '#10b981' },
-        { nombre: 'Pendientes', valor: estadoCount['Pendientes'], color: '#f59e0b' },
-        { nombre: 'Canceladas', valor: estadoCount['Canceladas'], color: '#ef4444' }
+        { nombre: 'Completadas', valor: estadoCount['completada'], color: '#10b981' },
+        { nombre: 'Pendientes', valor: estadoCount['pendiente'], color: '#f59e0b' },
+        { nombre: 'Canceladas', valor: estadoCount['cancelada'], color: '#ef4444' }
       ];
 
+     
       setEstadoCitasData(estadoCitasData);
     } catch (error) {
       console.error('Error en loadEstadoCitasHoy:', error);
@@ -521,7 +525,10 @@ export default function DashboardEmpresaPage() {
         loadIngresosCitasPorFiltro(filtroVentas),
         loadEstadoCitasHoy(),
         loadAlertasInventario(),
-        loadIngresosHoy()
+        loadIngresosHoy(),
+        loadComisionesPendientes(),
+        loadNuevosClientes(),
+        loadCitasHoy()
       ]).finally(() => {
         setLoadingCharts(false);
       });
@@ -549,18 +556,58 @@ export default function DashboardEmpresaPage() {
     }
     
     // Permitir que admin_global vea el dashboard-empresa si lo desea
-    // No redirigir automáticamente a admin-dashboard
+    // No redirigir automáticamente a admin/dashboard-admin
   }, [user, router]);
 
-  // Cargar citas del día desde Supabase
+  // Función para cargar todas las citas de hoy
+  const loadCitasHoy = async () => {
+    if (!user?.empresa_id) return;
+    
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const { data, error } = await supabase
+        .from('citas')
+        .select(`
+          *,
+          clientes!inner (
+            id,
+            nombre
+          ),
+          empleados!inner (
+            id,
+            nombre_completo
+          )
+        `)
+        .eq('empresa_id', user.empresa_id)
+        .gte('fecha', startOfDay.toISOString())
+        .lte('fecha', endOfDay.toISOString())
+        .order('fecha', { ascending: true });
+
+      if (error) {
+        console.error('Error cargando citas de hoy:', error);
+        setCitasHoy([]);
+        return;
+      }
+
+      setCitasHoy(data || []);
+    } catch (error) {
+      console.error('Error en loadCitasHoy:', error);
+      setCitasHoy([]);
+    }
+  };
+
+  // Función para cargar citas del dashboard
   const loadAppointments = async () => {
     if (!user?.empresa_id) return;
     
     try {
       setAppointmentsLoading(true);
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      
-      console.log('Cargando citas para empresa:', user.empresa_id, 'fecha:', today);
       
       // Primero verificar si hay citas sin filtro de fecha
       const { data: allCitas, error: allError } = await supabase
@@ -594,10 +641,6 @@ export default function DashboardEmpresaPage() {
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * appointmentsPerPage, currentPage * appointmentsPerPage - 1);
 
-      console.log('Citas filtradas por fecha:', data);
-      console.log('Error en citas filtradas:', error);
-      console.log('Count total:', count);
-
       if (error) {
         console.error('Error cargando citas:', error);
         setAppointments([]);
@@ -606,13 +649,66 @@ export default function DashboardEmpresaPage() {
 
       setAppointments(data || []);
       setTotalAppointments(count || 0);
-      
-      console.log('Estado final - appointments:', data?.length || 0, 'total:', count);
     } catch (error) {
       console.error('Error en loadAppointments:', error);
       setAppointments([]);
     } finally {
       setAppointmentsLoading(false);
+    }
+  };
+
+  // Función para cargar comisiones pendientes
+  const loadComisionesPendientes = async () => {
+    if (!user?.empresa_id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('comisiones')
+        .select('monto_comision')
+        .eq('empresa_id', user.empresa_id)
+        .eq('estado', 'pendiente');
+
+      if (error) {
+        console.error('Error cargando comisiones pendientes:', error);
+        return;
+      }
+
+      const totalComisiones = data?.reduce((sum, comision) => sum + (comision.monto_comision || 0), 0) || 0;
+      setComisionesPendientes(totalComisiones);
+    } catch (error) {
+      console.error('Error en loadComisionesPendientes:', error);
+    }
+  };
+
+  // Función para cargar nuevos clientes de la semana
+  const loadNuevosClientes = async () => {
+    if (!user?.empresa_id) return;
+    
+    try {
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Inicio de la semana (domingo)
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(today.getDate() + (6 - today.getDay())); // Fin de la semana (sábado)
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('empresa_id', user.empresa_id)
+        .gte('created_at', startOfWeek.toISOString())
+        .lte('created_at', endOfWeek.toISOString());
+
+      if (error) {
+        console.error('Error cargando nuevos clientes:', error);
+        return;
+      }
+
+      const count = data?.length || 0;
+      setNuevosClientes(count);
+    } catch (error) {
+      console.error('Error en loadNuevosClientes:', error);
     }
   };
 
@@ -643,9 +739,7 @@ export default function DashboardEmpresaPage() {
   }
 
   return (
-    <SimpleLayout>
-      {/* Contenido principal con paleta clara/blanca BeautyPro */}
-      <div className="min-h-screen bg-white p-6">
+      <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Banner de mensaje global - Ancho completo */}
           <MensajeGlobalBanner key="global-banner" />
@@ -681,7 +775,7 @@ export default function DashboardEmpresaPage() {
                 <Calendar className="h-5 w-5 text-amber-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">12</div>
+                <div className="text-2xl font-bold text-gray-900">{totalAppointments}</div>
                 <p className="text-xs text-gray-500">
                   Citas programadas
                 </p>
@@ -694,7 +788,7 @@ export default function DashboardEmpresaPage() {
                 <TrendingUp className="h-5 w-5 text-amber-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">$120.000</div>
+                <div className="text-2xl font-bold text-gray-900">${comisionesPendientes.toLocaleString('es-CO')}</div>
                 <p className="text-xs text-gray-500">
                   Por pagar a empleados
                 </p>
@@ -707,7 +801,7 @@ export default function DashboardEmpresaPage() {
                 <UserPlus className="h-5 w-5 text-amber-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">3</div>
+                <div className="text-2xl font-bold text-gray-900">{nuevosClientes}</div>
                 <p className="text-xs text-gray-500">
                   Registrados esta semana
                 </p>
@@ -819,27 +913,28 @@ export default function DashboardEmpresaPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
-                      <LineChart data={ingresosCitasData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <>
+                      <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
+                        <LineChart data={ingresosCitasData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                         <XAxis 
                           dataKey="dia" 
-                          stroke="#d97706"
-                          tick={{ fill: '#d97706' }}
+                          stroke="#6b7280"
+                          tick={{ fill: '#6b7280' }}
                         />
                         <YAxis 
-                          stroke="#d97706"
-                          tick={{ fill: '#d97706' }}
+                          stroke="#6b7280"
+                          tick={{ fill: '#6b7280' }}
                           tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                         />
                         <Tooltip 
                           contentStyle={{ 
-                            backgroundColor: '#1f2937', 
-                            border: '1px solid #374151',
+                            backgroundColor: '#ffffff', 
+                            border: '1px solid #e5e7eb',
                             borderRadius: '8px'
                           }}
-                          labelStyle={{ color: '#d97706' }}
-                          itemStyle={{ color: '#fbbf24' }}
+                          labelStyle={{ color: '#374151' }}
+                          itemStyle={{ color: '#d97706' }}
                           formatter={(value: any) => [`$${value.toLocaleString('es-MX')}`, 'Ingreso de Cita']}
                         />
                         <Line 
@@ -847,11 +942,12 @@ export default function DashboardEmpresaPage() {
                           dataKey="monto" 
                           stroke="#d97706"
                           strokeWidth={3}
-                          dot={{ fill: '#fbbf24', strokeWidth: 2, r: 6 }}
+                          dot={{ fill: '#f59e0b', strokeWidth: 2, r: 6 }}
                           activeDot={{ r: 8 }}
                         />
                       </LineChart>
-                  </ResponsiveContainer>
+                      </ResponsiveContainer>
+                    </>
                   )}
                 </div>
               </CardContent>
@@ -875,10 +971,12 @@ export default function DashboardEmpresaPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
-                      <PieChart>
-                      <Pie
-                        data={estadoCitasData}
+                    <>
+                      {}
+                      <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
+                        <PieChart>
+                        <Pie
+                          data={estadoCitasData}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -904,23 +1002,40 @@ export default function DashboardEmpresaPage() {
                         verticalAlign="middle" 
                         align="right" 
                         layout="vertical"
+                        iconType="none"
                         wrapperStyle={{
-                          color: '#d97706',
-                          fontSize: '14px'
+                          color: '#374151',
+                          fontSize: '16px',
+                          fontWeight: 'bold'
                         }}
-                        formatter={(value: any, entry: any) => (
-                          <span style={{ color: '#d97706' }}>
-                            {entry.payload.nombre}: {entry.payload.valor}
-                          </span>
-                        )}
+                        formatter={(value: any, entry: any) => {
+                         
+                          const nombre = entry.payload?.nombre || 'Sin nombre';
+                          const valor = entry.payload?.valor || 0;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div 
+                                style={{ 
+                                  width: '12px', 
+                                  height: '12px', 
+                                  backgroundColor: entry.color || entry.payload?.color, 
+                                  borderRadius: '2px' 
+                                }}
+                              />
+                              <span style={{ color: '#374151', fontWeight: 'bold' }}>
+                                {nombre}: {valor}
+                              </span>
+                            </div>
+                          );
+                        }}
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                      </ResponsiveContainer>
+                    </>
                   )}
                 </div>
               </CardContent>
             </Card>
-          </div>
 
           {/* Alertas de Inventario */}
           <Card className="bg-white border-gray-200 mb-8">
@@ -975,104 +1090,95 @@ export default function DashboardEmpresaPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </div>
 
-          {/* Tabla de Citas del Día */}
-          <Card className="bg-white border-gray-200">
-            <CardHeader className="border-stone-800">
-              <h3 className="text-xl font-semibold text-gray-900">Citas de Hoy</h3>
-              <p className="text-gray-600 text-sm">Próximas citas programadas</p>
+      {/* Tabla de Citas de Hoy - Ancho completo */}
+      <div className="w-full bg-gray-50 px-8 pb-8">
+        <div className="max-w-7xl mx-auto">
+          <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-300 w-full">
+            <CardHeader className="border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Citas de Hoy</h3>
+                  <p className="text-gray-600 text-sm">Todas las citas del día (sin importar estado)</p>
+                </div>
+                <Calendar className="h-5 w-5 text-blue-600" />
+              </div>
             </CardHeader>
-            <CardContent>
-              {appointmentsLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                </div>
-              ) : appointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-stone-400">No hay citas programadas para hoy</p>
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="text-left p-3 font-medium text-gray-700 border-r">Fecha</th>
-                          <th className="text-left p-3 font-medium text-gray-700 border-r">Cliente</th>
-                          <th className="text-left p-3 font-medium text-gray-700 border-r">Empleado</th>
-                          <th className="text-left p-3 font-medium text-gray-700 border-r">Total</th>
-                          <th className="text-center p-3 font-medium text-gray-700 border-r">Estado</th>
+            <CardContent className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="text-left p-4 font-medium text-gray-700 border-r">Hora</th>
+                      <th className="text-left p-4 font-medium text-gray-700 border-r">Cliente</th>
+                      <th className="text-left p-4 font-medium text-gray-700 border-r">Empleado</th>
+                      <th className="text-left p-4 font-medium text-gray-700 border-r">Servicios</th>
+                      <th className="text-center p-4 font-medium text-gray-700 border-r">Total</th>
+                      <th className="text-center p-4 font-medium text-gray-700">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {citasHoy.length > 0 ? (
+                      citasHoy.map((cita) => (
+                        <tr key={cita.id} className="border-b hover:bg-gray-50">
+                          <td className="p-4 border-r">
+                            <div className="text-sm font-medium text-gray-900">
+                              {new Date(cita.fecha).toLocaleTimeString('es-CO', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r">
+                            <div className="font-medium text-gray-900">
+                              {cita.clientes?.nombre || 'Sin cliente'}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r">
+                            <div className="font-medium text-gray-900">
+                              {cita.empleados?.nombre_completo || 'Sin asignar'}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r">
+                            <div className="text-sm text-gray-600">
+                              {cita.servicios_ids && Array.isArray(cita.servicios_ids) 
+                                ? `${cita.servicios_ids.length} servicio(s)` 
+                                : 'Sin servicios'}
+                            </div>
+                          </td>
+                          <td className="p-4 border-r text-center">
+                            <div className="font-bold text-gray-900">
+                              ${cita.total_estimado ? parseFloat(cita.total_estimado).toLocaleString('es-MX') : '0'}
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className={`px-3 py-2 rounded-full text-sm font-medium ${
+                              cita.estado === 'completada' ? 'bg-green-100 text-green-800' :
+                              cita.estado === 'cancelada' ? 'bg-red-100 text-red-800' :
+                              cita.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {cita.estado || 'Sin estado'}
+                            </span>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {appointments.map((appointment) => (
-                          <tr key={appointment.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 border-r">
-                              <div className="text-sm">
-                                {appointment.fecha ? new Date(appointment.fecha).toLocaleDateString('es-MX') : 'Sin fecha'}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {appointment.fecha ? new Date(appointment.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </div>
-                            </td>
-                            <td className="p-3 border-r">
-                              <div className="font-medium text-gray-900">
-                                {appointment.clientes?.nombre || 'Cliente sin nombre'}
-                              </div>
-                            </td>
-                            <td className="p-3 border-r">
-                              <div className="font-medium text-gray-900">
-                                {appointment.empleados?.nombre_completo || 'Empleado sin nombre'}
-                              </div>
-                            </td>
-                            <td className="p-3 border-r">
-                              <div className="font-medium text-gray-900">
-                                ${appointment.total_estimado ? appointment.total_estimado.toFixed(2) : '0.00'}
-                              </div>
-                            </td>
-                            <td className="p-3 border-r text-center">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(appointment.estado || '')}`}>
-                                {appointment.estado ? appointment.estado.replace('_', ' ') : 'Desconocido'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Paginación */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-                    <div className="text-sm text-gray-600">
-                      Mostrando {appointments.length} de {totalAppointments} citas
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300 text-gray-600 hover:bg-gray-100"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300 text-gray-600 hover:bg-gray-100"
-                        onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalAppointments / appointmentsPerPage), prev + 1))}
-                        disabled={currentPage >= Math.ceil(totalAppointments / appointmentsPerPage)}
-                      >
-                        Siguiente
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center text-gray-500">
+                          <div className="text-lg">No hay citas programadas para hoy</div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
-    </SimpleLayout>
+      </div>
   );
 }

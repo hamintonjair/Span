@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase-client';
 import { useToast } from '@/components/ui/toast';
+import { registrarLog } from '@/lib/audit';
 import {
   CurrencyDollarIcon,
   DocumentArrowUpIcon,
@@ -52,6 +53,17 @@ interface Plan {
   descripcion?: string;
 }
 
+interface ConfiguracionGlobal {
+  banco: string;
+  tipo_cuenta: string;
+  numero_cuenta: string;
+  titular: string;
+}
+
+interface AdminGlobal {
+  correo: string;
+}
+
 export default function FinanzasEmpresaPage() {
   const { user } = useJWTAuth();
   const supabase = createClient();
@@ -62,6 +74,10 @@ export default function FinanzasEmpresaPage() {
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  
+  // Estados para datos de configuración global y admin global
+  const [configGlobal, setConfigGlobal] = useState<ConfiguracionGlobal | null>(null);
+  const [adminGlobal, setAdminGlobal] = useState<AdminGlobal | null>(null);
   const [itemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -135,6 +151,8 @@ export default function FinanzasEmpresaPage() {
     if (user?.empresa_id) {
       loadEmpresa();
       loadPagos();
+      loadConfiguracionGlobal();
+      loadAdminGlobal();
     }
   }, [user, currentPage, filtroEstado, fechaInicio, fechaFin]);
 
@@ -184,8 +202,6 @@ export default function FinanzasEmpresaPage() {
         return;
       }
       
-      console.log('Cargando comprobantes para empresa_id:', user.empresa_id);
-      
       // Construir query con filtros - usando tabla comprobantes como el Admin Global
       let query = createClient()
         .from('comprobantes')
@@ -231,16 +247,12 @@ export default function FinanzasEmpresaPage() {
 
       const { data, error, count } = await query;
       
-      console.log('Comprobantes cargados:', data?.length, 'Total:', count);
-      console.log('Datos recibidos:', data);
-      
       if (error) throw error;
       
       // ✅ Actualizar montos de comprobantes existentes que no tienen precio
       if (data && planActual?.precio) {
         const comprobantesSinMonto = data.filter(comp => !comp.monto || comp.monto === 0);
         if (comprobantesSinMonto.length > 0) {
-          console.log(`Actualizando ${comprobantesSinMonto.length} comprobantes sin monto...`);
           
           for (const comprobante of comprobantesSinMonto) {
             await supabase
@@ -265,6 +277,47 @@ export default function FinanzasEmpresaPage() {
       setPagos([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadConfiguracionGlobal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('configuracion_global')
+        .select('banco, tipo_cuenta, numero_cuenta, titular')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error cargando configuración global:', error);
+        return;
+      }
+
+      if (data) {
+        setConfigGlobal(data);
+      }
+    } catch (error) {
+      console.error('Error en loadConfiguracionGlobal:', error);
+    }
+  };
+
+  const loadAdminGlobal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios_sistema')
+        .select('email')
+        .eq('rol', 'admin_global')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error cargando admin global:', error);
+        return;
+      }
+
+      if (data) {
+        setAdminGlobal({ correo: data.email });
+      }
+    } catch (error) {
+      console.error('Error en loadAdminGlobal:', error);
     }
   };
 
@@ -326,10 +379,8 @@ export default function FinanzasEmpresaPage() {
         .getPublicUrl(fileName);
 
       // Insertar registro en tabla comprobantes (SOLO campos existentes en la BD)
-      console.log('Insertando comprobante con monto:', planActual?.precio);
-      console.log('Plan actual:', planActual);
       
-      const { error: insertError } = await supabase
+      const { data: insertData, error: insertError } = await supabase
         .from('comprobantes')
         .insert({
           empresa_id: user?.empresa_id,
@@ -340,9 +391,29 @@ export default function FinanzasEmpresaPage() {
           estado: 'pendiente', // ✅ Campo correcto: 'estado'
           monto: planActual?.precio || 0 // ✅ Usar precio del plan actual desde la tabla planes
           // ❌ Eliminados: metodo_pago, mes_pago, estado_pago, verificado, fecha_envio, creado_en, actualizado_en (no existen)
-        });
+        })
+        .select('id')
+        .single();
 
       if (insertError) throw insertError;
+      
+      // Registrar log de auditoría
+      await registrarLog(createClient(), {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'REGISTRAR_GASTO',
+        modulo: 'FINANZAS',
+        detalles: {
+          comprobante_id: insertData?.id,
+          nombre_archivo: selectedFile.name,
+          monto: planActual?.precio || 0,
+          mes_pago: selectedMonth,
+          concepto: 'Pago de suscripción',
+          categoria: 'comprobante_pago',
+          registrado_por: user?.id,
+          fecha_registro: new Date().toISOString()
+        }
+      });
       
       // ✅ Limpiar estados del formulario
       setSelectedFile(null);
@@ -578,6 +649,69 @@ export default function FinanzasEmpresaPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Datos de Pago - Cuenta del Super Admin */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CurrencyDollarIcon className="w-5 h-5 text-blue-600" />
+              Datos para Pago
+            </CardTitle>
+            <p className="text-gray-600 mt-2">
+              Realiza tus pagos a esta cuenta bancaria y contacta al administrador si tienes dudas
+            </p>
+          </CardHeader>
+          <CardContent>
+            {configGlobal && adminGlobal ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-900 mb-2">Información Bancaria</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Banco:</span>
+                        <span className="text-sm text-gray-900">{configGlobal.banco}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Tipo de Cuenta:</span>
+                        <span className="text-sm text-gray-900">{configGlobal.tipo_cuenta}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Número de Cuenta:</span>
+                        <span className="text-sm font-mono text-gray-900">{configGlobal.numero_cuenta}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Titular:</span>
+                        <span className="text-sm text-gray-900">{configGlobal.titular}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-gray-900 mb-2">Contacto Administrador</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Correo de Contacto:</span>
+                        <span className="text-sm text-blue-600">{adminGlobal.correo}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        <strong>Importante:</strong> Cargar el comprobante de pago en esta misma vista en <strong>Subir comprobante de pago</strong> para ser revisado y activar tu suscripción. Si en alguún momento presenta INCONVENIENTES para el envio del comprobante, <strong>enviar un correo indicando los problemas presentados para poder darte una solución.</strong> 
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto"></div>
+                <p className="mt-2 text-gray-600">Cargando datos de pago...</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Historial de Pagos */}
         <Card className="mt-6">

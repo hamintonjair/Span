@@ -2,10 +2,10 @@
 
 import { MainLayout } from '@/components/layout/main-layout';
 import { TerminalPOSUpgraded } from '@/components/pos/terminal-pos-upgraded';
-import { useAuth } from '@/hooks/use-auth';
+import { useJWTAuth } from '@/hooks/use-jwt-auth';
 
 export default function POSPage() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useJWTAuth();
 
   if (loading) {
     return (

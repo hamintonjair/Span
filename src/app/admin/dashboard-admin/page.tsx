@@ -1,580 +1,603 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  BuildingOfficeIcon,
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  BanknotesIcon,
+  BuildingStorefrontIcon,
   UsersIcon,
-  CurrencyDollarIcon,
-  CreditCardIcon,
-  ClipboardDocumentListIcon,
-  UserGroupIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  ExclamationTriangleIcon,
+  BuildingOfficeIcon,
   CheckCircleIcon,
-  ClockIcon,
-  BellIcon,
-  ArrowRightIcon,
+  XCircleIcon,
   ChartBarIcon,
-  ServerIcon,
-  ShieldCheckIcon,
-  ArrowPathIcon
+  ArrowRightIcon,
+  CurrencyDollarIcon,
+  BriefcaseIcon,
+  CogIcon,
+  ClockIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { createClient } from '@/lib/supabase/client';
-import { useJWTAuth } from '@/hooks/use-jwt-auth';
+import Link from 'next/link';
+import { obtenerMetricasDashboardAction } from '@/app/actions/admin';
+import GraficosDashboard from '@/components/admin/GraficosDashboard';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-interface DashboardStats {
-  totalEmpresas: number;
-  empresasActivas: number;
-  empresasNuevas: number;
-  totalUsuarios: number;
-  usuariosActivos: number;
-  ingresosMensuales: number;
-  ingresosTotales: number;
-  suscripcionesActivas: number;
-  suscripcionesPendientes: number;
-}
+// Función para formatear moneda colombiana
+const formatearMoneda = (cantidad: number): string => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(cantidad);
+};
 
-interface EmpresaReciente {
-  id: string;
-  nombre: string;
-  nit: string;
-  plan: string;
-  estado: string;
-  fecha_creacion: string;
-  usuarios_count: number;
-}
-
-interface ActividadReciente {
-  id: string;
-  tipo: string;
-  descripcion: string;
-  empresa_id: string;
-  empresa_nombre: string;
-  usuario_id: string;
-  created_at: string;
-}
-
-export default function AdminDashboardPage() {
-  const { user } = useJWTAuth();
-  const supabase = createClient();
+// Función para formatear fecha relativa
+const formatearFechaRelativa = (fecha: string): string => {
+  const fechaObj = new Date(fecha);
+  const ahora = new Date();
+  const diferenciaMs = ahora.getTime() - fechaObj.getTime();
+  const diferenciaDias = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
   
-  // Estados
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmpresas: 0,
-    empresasActivas: 0,
-    empresasNuevas: 0,
-    totalUsuarios: 0,
-    usuariosActivos: 0,
-    ingresosMensuales: 0,
-    ingresosTotales: 0,
-    suscripcionesActivas: 0,
-    suscripcionesPendientes: 0
-  });
-  
-  const [empresasRecientes, setEmpresasRecientes] = useState<EmpresaReciente[]>([]);
-  const [actividadesRecientes, setActividadesRecientes] = useState<ActividadReciente[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Cargar estadísticas
-  const cargarStats = async () => {
-    try {
-      // Total de empresas
-      const { count: totalEmpresas } = await supabase
-        .from('empresas')
-        .select('*', { count: 'exact', head: true });
-
-      // Empresas activas (con suscripción activa)
-      const { count: empresasActivas } = await supabase
-        .from('empresas')
-        .select('*', { count: 'exact', head: true })
-        .eq('estado', 'activo');
-
-      // Empresas nuevas (últimos 30 días)
-      const fechaHace30Dias = new Date();
-      fechaHace30Dias.setDate(fechaHace30Dias.getDate() - 30);
-      
-      const { count: empresasNuevas } = await supabase
-        .from('empresas')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', fechaHace30Dias.toISOString());
-
-      // Total de usuarios
-      const { count: totalUsuarios } = await supabase
-        .from('perfiles')
-        .select('*', { count: 'exact', head: true })
-        .in('rol', ['admin_empresa', 'estilista', 'recepcionista', 'empleado']);
-
-      // Usuarios activos (últimos 7 días)
-      const fechaHace7Dias = new Date();
-      fechaHace7Dias.setDate(fechaHace7Dias.getDate() - 7);
-      
-      const { count: usuariosActivos } = await supabase
-        .from('perfiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('last_login', fechaHace7Dias.toISOString());
-
-      // Ingresos mensuales
-      const primerDiaMes = new Date();
-      primerDiaMes.setDate(1);
-      primerDiaMes.setHours(0, 0, 0, 0);
-      
-      const { data: ingresosMensuales } = await (supabase.from('suscripciones') as any)
-        .select('monto')
-        .eq('estado', 'pagada')
-        .gte('fecha_pago', primerDiaMes.toISOString());
-
-      // Ingresos totales
-      const { data: ingresosTotales } = await (supabase.from('suscripciones') as any)
-        .select('monto')
-        .eq('estado', 'pagada');
-
-      // Suscripciones activas
-      const { count: suscripcionesActivas } = await supabase
-        .from('suscripciones')
-        .select('*', { count: 'exact', head: true })
-        .eq('estado', 'pagada');
-
-      // Suscripciones pendientes
-      const { count: suscripcionesPendientes } = await supabase
-        .from('suscripciones')
-        .select('*', { count: 'exact', head: true })
-        .eq('estado', 'pendiente');
-
-      // Actualizar stats
-      setStats({
-        totalEmpresas: totalEmpresas || 0,
-        empresasActivas: empresasActivas || 0,
-        empresasNuevas: empresasNuevas || 0,
-        totalUsuarios: totalUsuarios || 0,
-        usuariosActivos: usuariosActivos || 0,
-        ingresosMensuales: (ingresosMensuales as any[])?.reduce((sum: number, sub: any) => sum + (sub.monto || 0), 0) || 0,
-        ingresosTotales: (ingresosTotales as any[])?.reduce((sum: number, sub: any) => sum + (sub.monto || 0), 0) || 0,
-        suscripcionesActivas: suscripcionesActivas || 0,
-        suscripcionesPendientes: suscripcionesPendientes || 0
-      });
-
-    } catch (error) {
-      console.error('Error cargando estadísticas:', error);
-    }
-  };
-
-  // Cargar empresas recientes
-  const cargarEmpresasRecientes = async () => {
-    try {
-      // Primero obtener las empresas con sus planes
-      const { data: empresasData } = await (supabase.from('empresas') as any)
-        .select(`
-          id,
-          nombre,
-          nit,
-          estado,
-          created_at,
-          planes(nombre)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (empresasData) {
-        // Para cada empresa, obtener el conteo de usuarios
-        const empresasConUsuarios = await Promise.all(
-          (empresasData as any[]).map(async (empresa: any) => {
-            const { count: usuariosCount } = await supabase
-              .from('perfiles')
-              .select('*', { count: 'exact', head: true })
-              .eq('empresa_id', empresa.id)
-              .in('rol', ['admin_empresa', 'estilista', 'recepcionista', 'empleado']);
-
-            return {
-              id: empresa.id,
-              nombre: empresa.nombre,
-              nit: empresa.nit,
-              estado: empresa.estado,
-              fecha_creacion: empresa.created_at,
-              plan: empresa.planes?.nombre || 'Sin plan',
-              usuarios_count: usuariosCount || 0
-            };
-          })
-        );
-        setEmpresasRecientes(empresasConUsuarios);
-      }
-    } catch (error) {
-      console.error('Error cargando empresas recientes:', error);
-    }
-  };
-
-  // Cargar actividades recientes
-  const cargarActividadesRecientes = async () => {
-    try {
-      const { data } = await (supabase.from('logs_actividad') as any)
-        .select(`
-          id,
-          accion,
-          modulo,
-          detalles,
-          empresa_id,
-          usuario_id,
-          created_at,
-          empresas(nombre),
-          perfiles(nombre)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (data) {
-        const actividadesFormateadas = (data as any[]).map((log: any) => {
-          return {
-            id: log.id,
-            tipo: log.accion,
-            descripcion: `${log.accion} en ${log.modulo}`,
-            empresa_id: log.empresa_id,
-            empresa_nombre: log.empresas?.nombre || 'Sistema',
-            usuario_id: log.usuario_id,
-            usuario_nombre: log.perfiles?.nombre || 'Sistema',
-            created_at: log.created_at
-          };
-        });
-        setActividadesRecientes(actividadesFormateadas);
-      }
-    } catch (error) {
-      console.error('Error cargando actividades recientes:', error);
-    }
-  };
-
-  // Cargar todos los datos
-  const cargarDatos = async () => {
-    setLoading(true);
-    await Promise.all([
-      cargarStats(),
-      cargarEmpresasRecientes(),
-      cargarActividadesRecientes()
-    ]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (user?.rol === 'admin_global') {
-      cargarDatos();
-    }
-  }, [user]);
-
-  // Formatear moneda
-  const formatearMoneda = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP'
-    }).format(amount);
-  };
-
-  // Obtener color de estado
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'activo':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'inactivo':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'pendiente':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  if (loading) {
-    return (
-      <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Cargando dashboard...</p>
-          </div>
-        </div>
-      </MainLayout>
-    );
+  if (diferenciaDias === 0) {
+    return 'Hoy';
+  } else if (diferenciaDias === 1) {
+    return 'Ayer';
+  } else if (diferenciaDias < 7) {
+    return `Hace ${diferenciaDias} días`;
+  } else if (diferenciaDias < 30) {
+    const semanas = Math.floor(diferenciaDias / 7);
+    return `Hace ${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`;
+  } else {
+    return fechaObj.toLocaleDateString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
   }
+};
+
+// Función para formatear hora
+const formatearHora = (fecha: string): string => {
+  const fechaObj = new Date(fecha);
+  return fechaObj.toLocaleTimeString('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// Página asíncrona del Dashboard Global
+export default async function AdminDashboardPage() {
+  // Obtener métricas directamente en el servidor
+  const metricasResult = await obtenerMetricasDashboardAction();
+
+  // Obtener datos para los gráficos
+  const supabaseAdmin = createAdminClient();
+
+  // Datos de Crecimiento (Evolución de Salones por mes)
+  const { data: empresas } = await supabaseAdmin
+    .from('empresas')
+    .select('creado_en')
+    .order('creado_en', { ascending: true });
+
+  // Agrupar por mes
+  let crecimientoPorMes: any[] = [];
+  if (empresas && empresas.length > 0) {
+    const agrupado = empresas.reduce((acc: any, empresa: any) => {
+      const fecha = new Date(empresa.creado_en);
+      const nombreMes = fecha.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+      if (!acc[nombreMes]) {
+        acc[nombreMes] = 0;
+      }
+      acc[nombreMes]++;
+      return acc;
+    }, {});
+
+    // Ordenar cronológicamente
+    const mesesOrdenados = Object.keys(agrupado).sort((a, b) => {
+      const [mesA, añoA] = a.split(' ');
+      const [mesB, añoB] = b.split(' ');
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const idxA = meses.indexOf(mesA.toLowerCase());
+      const idxB = meses.indexOf(mesB.toLowerCase());
+      if (añoA !== añoB) return parseInt(añoA) - parseInt(añoB);
+      return idxA - idxB;
+    });
+
+    crecimientoPorMes = mesesOrdenados.map(mes => ({
+      mes: mes.charAt(0).toUpperCase() + mes.slice(1),
+      salones: agrupado[mes]
+    }));
+  }
+
+  // Datos de Distribución de Planes
+  const { data: empresasConPlanes } = await supabaseAdmin
+    .from('empresas')
+    .select('planes(nombre)')
+    .not('plan_id', 'is', null);
+
+  let distribucionPlanes: any[] = [];
+  const colores = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+  if (empresasConPlanes && empresasConPlanes.length > 0) {
+    const agrupado = empresasConPlanes.reduce((acc: any, empresa: any) => {
+      const nombrePlan = empresa.planes?.nombre || 'Sin plan';
+      if (!acc[nombrePlan]) {
+        acc[nombrePlan] = 0;
+      }
+      acc[nombrePlan]++;
+      return acc;
+    }, {});
+
+    distribucionPlanes = Object.entries(agrupado).map(([nombre, value], index) => ({
+      name: nombre,
+      value: value as number,
+      color: colores[index % colores.length]
+    }));
+  }
+  
+  if (!metricasResult.success) {
+    console.error('Error cargando métricas:', metricasResult.error);
+  }
+
+  const metricas = metricasResult.data || {
+    mrr: 0,
+    totalEmpresas: 0,
+    activas: 0,
+    suspendidas: 0,
+    totalUsuarios: 0,
+    porcentajeCrecimiento: 0,
+    actividadReciente: [],
+    distribucionPlanes: [],
+    proximosVencimientos: []
+  };
+
+  // Obtener comprobantes pendientes para el badge
+  const obtenerComprobantesPendientes = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comprobantes-pendientes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      });
+      if (!response.ok) return 0;
+      const data = await response.json();
+      return data?.length || 0;
+    } catch (error) {
+      console.error('Error obteniendo comprobantes pendientes:', error);
+      return 0;
+    }
+  };
+
+  const pendientesCount = await obtenerComprobantesPendientes();
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="max-w-7xl mx-auto p-6">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Dashboard Administración Global</h1>
-                <p className="text-gray-400">
-                  Panel de control para la gestión del sistema BeautyPro SaaS
-                </p>
+      <div className="min-h-screen bg-[#fdfaf6] p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Dashboard Global
+          </h1>
+          <p className="text-gray-500 text-lg">
+            Resumen de rendimiento y métricas de Span
+          </p>
+        </div>
+
+        {/* Sección de Métricas - Tarjetas Superiores */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          
+          {/* Ingresos Mensuales (MRR) */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-amber-50 rounded-lg">
+                  <BanknotesIcon className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500 mb-1">Ingresos Mensuales</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatearMoneda(metricas.mrr)}
+                  </p>
+                </div>
               </div>
-              <Button
-                onClick={cargarDatos}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <ArrowPathIcon className="w-4 h-4 mr-2" />
-                Actualizar
-              </Button>
-            </div>
-          </div>
+              <div className="flex items-center text-sm text-amber-600">
+                <CurrencyDollarIcon className="w-4 h-4 mr-1" />
+                <span>MRR Real</span>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Tarjetas de Estadísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Empresas */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <BuildingOfficeIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                    Total
-                  </Badge>
+          {/* Empresas Totales */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <BuildingStorefrontIcon className="w-6 h-6 text-blue-600" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">{stats.totalEmpresas}</div>
-                  <div className="text-sm text-gray-400">Empresas registradas</div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-green-400">+{stats.empresasNuevas}</span>
-                    <span className="text-gray-500">nuevas este mes</span>
-                  </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500 mb-1">Empresas Totales</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {metricas.totalEmpresas.toLocaleString('es-CO')}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="text-green-600 font-medium">Activas: {metricas.activas}</span>
+                <span className="mx-2">•</span>
+                <span className="text-red-600 font-medium">Suspendidas: {metricas.suspendidas}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Usuarios */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                    <UsersIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    Activos
-                  </Badge>
+          {/* Usuarios Globales */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <UsersIcon className="w-6 h-6 text-purple-600" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">{stats.usuariosActivos}</div>
-                  <div className="text-sm text-gray-400">Usuarios activos</div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-400">de {stats.totalUsuarios} totales</span>
-                  </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500 mb-1">Usuarios Globales</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {metricas.totalUsuarios.toLocaleString('es-CO')}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="flex items-center text-sm text-purple-600">
+                <UsersIcon className="w-4 h-4 mr-1" />
+                <span>Registrados</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            {/* Ingresos */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center">
-                    <CurrencyDollarIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-                    Mensual
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">
-                    {formatearMoneda(stats.ingresosMensuales)}
-                  </div>
-                  <div className="text-sm text-gray-400">Ingresos mensuales</div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-400">Total: {formatearMoneda(stats.ingresosTotales)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Gráficos Dashboard */}
+        <GraficosDashboard datosCrecimiento={crecimientoPorMes} datosPlanes={distribucionPlanes} />
 
-            {/* Suscripciones */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-                    <CreditCardIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                    Activas
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">{stats.suscripcionesActivas}</div>
-                  <div className="text-sm text-gray-400">Suscripciones activas</div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-yellow-400">{stats.suscripcionesPendientes}</span>
-                    <span className="text-gray-500">pendientes</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Grid de contenido secundario */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Empresas Recientes */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <BuildingOfficeIcon className="w-5 h-5 text-blue-400" />
-                    <h2 className="text-lg font-semibold text-white">Empresas Recientes</h2>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => window.location.href = '/admin/empresas'}
-                  >
-                    Ver todas
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-700">
-                  {empresasRecientes.map((empresa) => (
-                    <div key={empresa.id} className="p-4 hover:bg-gray-700 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-white">{empresa.nombre}</div>
-                        <Badge className={getEstadoColor(empresa.estado)}>
-                          {empresa.estado}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-gray-400 space-y-1">
-                        <div>NIT: {empresa.nit}</div>
-                        <div>Plan: {empresa.plan}</div>
-                        <div>Usuarios: {empresa.usuarios_count}</div>
+        {/* Sección de Estadísticas - Cuerpo Central */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          
+          {/* Salud del Sistema */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-6">
+                <ChartBarIcon className="w-5 h-5 text-amber-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Salud del Sistema</h3>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Distribución visual */}
+                <div className="flex items-center justify-center">
+                  <div className="relative w-32 h-32">
+                    {/* Círculo de progreso */}
+                    <svg className="w-32 h-32 transform -rotate-90">
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="#e5e7eb"
+                        strokeWidth="12"
+                        fill="none"
+                      />
+                      <circle
+                        cx="64"
+                        cy="64"
+                        r="56"
+                        stroke="#10b981"
+                        strokeWidth="12"
+                        fill="none"
+                        strokeDasharray={`${(metricas.activas / Math.max(metricas.totalEmpresas, 1)) * 352} 352`}
+                        className="transition-all duration-500"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {Math.round((metricas.activas / Math.max(metricas.totalEmpresas, 1)) * 100)}%
+                        </p>
+                        <p className="text-xs text-gray-500">Activas</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Actividad Reciente */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <ClipboardDocumentListIcon className="w-5 h-5 text-green-400" />
-                    <h2 className="text-lg font-semibold text-white">Actividad Reciente</h2>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    onClick={() => window.location.href = '/admin/auditoria'}
-                  >
-                    Ver auditoría
-                  </Button>
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-700">
-                  {actividadesRecientes.map((actividad) => (
-                    <div key={actividad.id} className="p-4 hover:bg-gray-700 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-white">{actividad.tipo}</div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(actividad.created_at).toLocaleString('es-CO', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-400 space-y-1">
-                        <div>{actividad.descripcion}</div>
-                        <div>Empresa: {actividad.empresa_nombre}</div>
-                      </div>
+                
+                {/* Leyenda */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                      <span className="text-gray-600">Activas</span>
                     </div>
-                  ))}
+                    <span className="font-medium text-green-600">{metricas.activas}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                      <span className="text-gray-600">Suspendidas</span>
+                    </div>
+                    <span className="font-medium text-red-600">{metricas.suspendidas}</span>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Acciones Rápidas */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <ChartBarIcon className="w-5 h-5 text-purple-400" />
-                  <h2 className="text-lg font-semibold text-white">Acciones Rápidas</h2>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  onClick={() => window.location.href = '/admin/empresas'}
-                  className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  <BuildingOfficeIcon className="w-4 h-4 mr-3" />
-                  Gestionar Empresas
-                </Button>
-                <Button
-                  onClick={() => window.location.href = '/admin/suscripciones'}
-                  className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  <CreditCardIcon className="w-4 h-4 mr-3" />
-                  Ver Suscripciones
-                </Button>
-                <Button
-                  onClick={() => window.location.href = '/admin/usuarios'}
-                  className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  <UsersIcon className="w-4 h-4 mr-3" />
-                  Administrar Usuarios
-                </Button>
-                <Button
-                  onClick={() => window.location.href = '/admin/auditoria'}
-                  className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  <ClipboardDocumentListIcon className="w-4 h-4 mr-3" />
-                  Ver Auditoría
-                </Button>
-                <Button
-                  onClick={() => window.location.href = '/admin/finanzas'}
-                  className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  <CurrencyDollarIcon className="w-4 h-4 mr-3" />
-                  Reportes Financieros
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sistema Status */}
-          <Card className="bg-gray-800 border-gray-700 mt-6">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <ServerIcon className="w-5 h-5 text-green-400" />
-                <h2 className="text-lg font-semibold text-white">Estado del Sistema</h2>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-300">Base de Datos: Operativa</span>
+            </CardContent>
+          </Card>
+
+          {/* Crecimiento de Red */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-6">
+                <ArrowTrendingUpIcon className="w-5 h-5 text-amber-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Crecimiento de Red</h3>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Porcentaje de crecimiento */}
+                <div className="text-center">
+                  {metricas.porcentajeCrecimiento === 100 && metricas.totalEmpresas > 0 ? (
+                    // Mes inicial sin historial
+                    <div className="space-y-2">
+                      <div className="px-4 py-2 rounded-full text-sm font-medium bg-amber-100 text-amber-800 inline-block">
+                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1 inline" />
+                        Mes Inicial
+                      </div>
+                      <p className="text-sm text-gray-500">Primeras empresas registradas</p>
+                    </div>
+                  ) : (
+                    // Crecimiento normal
+                    <div className="space-y-2">
+                      <p className="text-4xl font-bold text-gray-900">
+                        {metricas.porcentajeCrecimiento >= 0 ? '+' : ''}{metricas.porcentajeCrecimiento.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-gray-500">vs. mes anterior</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-300">API: Funcionando</span>
+                
+                {/* Indicador visual */}
+                <div className="flex items-center justify-center">
+                  {metricas.porcentajeCrecimiento === 100 && metricas.totalEmpresas > 0 ? (
+                    <div className="px-4 py-2 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                      <ArrowTrendingUpIcon className="w-4 h-4 mr-1 inline" />
+                      Nuevo
+                    </div>
+                  ) : (
+                    <div className={`px-4 py-2 rounded-full text-sm font-medium ${
+                      metricas.porcentajeCrecimiento >= 0 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {metricas.porcentajeCrecimiento >= 0 ? (
+                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1 inline" />
+                      ) : (
+                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1 inline transform rotate-180" />
+                      )}
+                      {metricas.porcentajeCrecimiento >= 0 ? 'Crecimiento' : 'Decrecimiento'}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-300">Autenticación: Activa</span>
+                
+                {/* Estadísticas adicionales */}
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-lg font-semibold text-gray-900">{metricas.totalEmpresas}</p>
+                    <p className="text-xs text-gray-500">Total Salones</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-3">
+                    <p className="text-lg font-semibold text-amber-600">{metricas.activas}</p>
+                    <p className="text-xs text-gray-500">Operativos</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Nueva Sección - Distribución de Planes y Próximos Vencimientos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          
+          {/* Distribución de Planes */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-6">
+                <ChartBarIcon className="w-5 h-5 text-amber-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Salones por Plan</h3>
+              </div>
+              
+              <div className="space-y-4">
+                {metricas.distribucionPlanes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <ChartBarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No hay salones con planes asignados</p>
+                  </div>
+                ) : (
+                  metricas.distribucionPlanes.map((plan: any, index: number) => {
+                    const maxCantidad = Math.max(...metricas.distribucionPlanes.map((p: any) => p.cantidad));
+                    const porcentaje = maxCantidad > 0 ? (plan.cantidad / maxCantidad) * 100 : 0;
+                    
+                    return (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-gray-700">{plan.nombre}</span>
+                          <span className="text-gray-900 font-semibold">{plan.cantidad}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-amber-500 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${porcentaje}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Próximos Vencimientos */}
+          <Card className="bg-white border border-gray-100 shadow-sm rounded-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-6">
+                <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Vencimientos (Próximos 5 días)</h3>
+              </div>
+              
+              <div className="space-y-3">
+                {metricas.proximosVencimientos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <ExclamationTriangleIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">Ningún salón vence en los próximos días</p>
+                  </div>
+                ) : (
+                  metricas.proximosVencimientos.map((vencimiento: any, index: number) => {
+                    const fechaVencimiento = new Date(vencimiento.fecha_vencimiento);
+                    const hoy = new Date();
+                    const diasRestantes = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-orange-100 rounded-full">
+                            <ExclamationTriangleIcon className="w-4 h-4 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{vencimiento.nombre}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatearFechaRelativa(vencimiento.fecha_vencimiento)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            diasRestantes <= 1 
+                              ? 'bg-red-100 text-red-800'
+                              : diasRestantes <= 3
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {diasRestantes === 0 ? 'Hoy' : 
+                             diasRestantes === 1 ? 'Mañana' : 
+                             `En ${diasRestantes} días`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Accesos Directos - Dashboard Shortcuts */}
+        <Card className="bg-white border border-gray-100 shadow-sm rounded-xl mb-8">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Acciones Rápidas</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Gestionar Salones */}
+              <Link 
+                href="/admin/empresas"
+                className="group p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200 hover:from-blue-100 hover:to-blue-200 transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors">
+                    <BriefcaseIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <ArrowRightIcon className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition-transform" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-1">Gestionar Salones</h4>
+                <p className="text-sm text-gray-600">Administra empresas y configuración</p>
+              </Link>
+
+              {/* Revisar Pagos */}
+              <Link 
+                href="/admin/suscripciones"
+                className="group p-6 bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl border border-amber-200 hover:from-amber-100 hover:to-amber-200 transition-all duration-200 relative"
+              >
+                {pendientesCount > 0 && (
+                  <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    {pendientesCount}
+                  </div>
+                )}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-amber-600 rounded-lg group-hover:bg-amber-700 transition-colors">
+                    <CurrencyDollarIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <ArrowRightIcon className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-1">Revisar Pagos</h4>
+                <p className="text-sm text-gray-600">
+                  {pendientesCount > 0 ? `${pendientesCount} pendientes` : 'Sin pagos pendientes'}
+                </p>
+              </Link>
+
+              {/* Configuración Global */}
+              <Link 
+                href="/admin/configuracion"
+                className="group p-6 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200 hover:from-purple-100 hover:to-purple-200 transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-purple-600 rounded-lg group-hover:bg-purple-700 transition-colors">
+                    <CogIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <ArrowRightIcon className="w-5 h-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-1">Configuración Global</h4>
+                <p className="text-sm text-gray-600">Ajustes y preferencias del sistema</p>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actividad Reciente */}
+        <Card className="bg-white border border-gray-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center mb-6">
+              <ClockIcon className="w-5 h-5 text-amber-600 mr-2" />
+              <h3 className="text-lg font-semibold text-gray-900">Actividad Reciente</h3>
+            </div>
+            
+            <div className="space-y-3">
+              {metricas.actividadReciente.length === 0 ? (
+                <div className="text-center py-8">
+                  <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">No hay actividad reciente</p>
+                </div>
+              ) : (
+                metricas.actividadReciente.map((actividad: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-full ${
+                        actividad.tipo === 'empresa_creada' 
+                          ? 'bg-blue-100' 
+                          : 'bg-green-100'
+                      }`}>
+                        {actividad.tipo === 'empresa_creada' ? (
+                          <BuildingOfficeIcon className="w-4 h-4 text-blue-600" />
+                        ) : (
+                          <CheckCircleIcon className="w-4 h-4 text-green-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {actividad.tipo === 'empresa_creada' 
+                            ? `Nueva empresa: ${actividad.nombre}`
+                            : `Pago aprobado: ${formatearMoneda(actividad.monto)}`
+                          }
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {formatearFechaRelativa(actividad.fecha)} • {formatearHora(actividad.fecha)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );

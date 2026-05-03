@@ -1,0 +1,491 @@
+{
+  "tables_in_backup_not_in_migrations": [],
+  "tables_in_migrations_not_in_backup": [],
+  "column_differences": {
+    "cajas": {
+      "columns_in_backup_not_in_migration": [
+        "monto_cierre",
+        "vendedor_id",
+        "monto_apertura",
+        "fecha_cierre",
+        "monto_final",
+        "estado",
+        "empresa_id",
+        "updated_at",
+        "fecha_apertura",
+        "monto_esperado",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "configuracion_global": {
+      "columns_in_backup_not_in_migration": [
+        "mensaje_global",
+        "banco",
+        "actualizado_en",
+        "ciudad",
+        "creado_en",
+        "porcentaje_iva",
+        "tipo_cuenta",
+        "logo_url",
+        "numero_cuenta",
+        "whatsapp_soporte",
+        "titular"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "respaldos_datos": {
+      "columns_in_backup_not_in_migration": [
+        "datos",
+        "tipo_respaldo",
+        "nombre_archivo",
+        "empresa_id",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "articulos_ayuda": {
+      "columns_in_backup_not_in_migration": [
+        "contenido",
+        "titulo",
+        "actualizado_en",
+        "estado",
+        "creado_en",
+        "imagen_url",
+        "categoria",
+        "video_url"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "productos": {
+      "columns_in_backup_not_in_migration": [
+        "proveedor_id",
+        "tipo",
+        "estado",
+        "empresa_id",
+        "sku",
+        "iva",
+        "costo_compra",
+        "descripcion",
+        "es_para_venta",
+        "stock_minimo",
+        "updated_at",
+        "precio_venta",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "usuarios_sistema": {
+      "columns_in_backup_not_in_migration": [
+        "reset_token_expires",
+        "password_hash",
+        "nombre",
+        "actualizado_en",
+        "reset_token",
+        "activo",
+        "updated_at",
+        "rol",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "comunicacion": {
+      "columns_in_backup_not_in_migration": [],
+      "columns_in_migration_not_in_backup": [
+        "numero_cuenta",
+        "id"
+      ]
+    },
+    "proveedores": {
+      "columns_in_backup_not_in_migration": [
+        "contacto_nombre",
+        "telefono",
+        "nit_rut",
+        "email",
+        "empresa_id",
+        "updated_at",
+        "direccion",
+        "estado",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "prestamos": {
+      "columns_in_backup_not_in_migration": [
+        "descripcion",
+        "monto_total",
+        "saldo_pendiente",
+        "empresa_id",
+        "fecha_limite",
+        "estado",
+        "updated_at",
+        "cuota_mensual",
+        "fecha_prestamo",
+        "empleado_id"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "movimientos_inventario": {
+      "columns_in_backup_not_in_migration": [
+        "stock_nuevo",
+        "stock_anterior",
+        "cantidad",
+        "creado_por",
+        "created_by",
+        "referencia_id",
+        "tipo_movimiento",
+        "notas",
+        "creado_en",
+        "empresa_id",
+        "referencia_tipo",
+        "producto_id",
+        "motivo",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "suscripciones": {
+      "columns_in_backup_not_in_migration": [
+        "comprobante_id",
+        "verificado",
+        "proximo_vencimiento",
+        "comprobante_url",
+        "actualizado_en",
+        "estado",
+        "empresa_id",
+        "creado_en",
+        "estado_pago",
+        "plan_id",
+        "monto",
+        "metodo_pago"
+      ],
+      "columns_in_migration_not_in_backup": [
+        "notas_pago",
+        "fecha_inicio"
+      ]
+    },
+    "ventas": {
+      "columns_in_backup_not_in_migration": [
+        "impuestos",
+        "fecha",
+        "estado",
+        "empresa_id",
+        "total",
+        "propina",
+        "numero_factura",
+        "cita_id",
+        "subtotal",
+        "descuentos",
+        "cliente_id",
+        "updated_at",
+        "metodo_pago",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "planes": {
+      "columns_in_backup_not_in_migration": [
+        "precio",
+        "tiene_nominas",
+        "tiene_inventario",
+        "max_empleados",
+        "descripcion",
+        "tiene_marketing",
+        "nombre",
+        "actualizado_en",
+        "soporte_prioritario",
+        "creado_en",
+        "tiene_comisiones",
+        "tiene_analytics",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "citas": {
+      "columns_in_backup_not_in_migration": [
+        "fecha",
+        "usuario_id",
+        "duracion_minutos",
+        "empleado_id",
+        "estado",
+        "empresa_id",
+        "total_estimado",
+        "notas",
+        "updated_at",
+        "servicios_ids",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": [
+        "array"
+      ]
+    },
+    "empresas": {
+      "columns_in_backup_not_in_migration": [
+        "nit",
+        "telefono",
+        "frecuencia_respaldo",
+        "actualizado_en",
+        "ciudad",
+        "estado_suscripcion",
+        "estado",
+        "creado_en",
+        "direccion",
+        "plan_id",
+        "logo_url",
+        "mensaje_ticket"
+      ],
+      "columns_in_migration_not_in_backup": [
+        "limite_empleados"
+      ]
+    },
+    "comprobantes": {
+      "columns_in_backup_not_in_migration": [
+        "tamano_bytes",
+        "url_archivo",
+        "nombre_archivo",
+        "fecha_verificacion",
+        "estado",
+        "empresa_id",
+        "tipo_archivo",
+        "notas",
+        "suscripcion_id",
+        "url_publica",
+        "fecha_envio",
+        "actualizado_en",
+        "plan_id",
+        "monto",
+        "verificado_por"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "empleados": {
+      "columns_in_backup_not_in_migration": [
+        "nombre_completo",
+        "email_empleado",
+        "fecha_contratacion",
+        "porcentaje_comision",
+        "estado",
+        "empresa_id",
+        "updated_at",
+        "direccion",
+        "sueldo_base",
+        "cedula",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "pagos_prestamos": {
+      "columns_in_backup_not_in_migration": [
+        "fecha_pago",
+        "monto_pago",
+        "empresa_id",
+        "notas",
+        "metodo_pago"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "categorias": {
+      "columns_in_backup_not_in_migration": [
+        "descripcion",
+        "empresa_id",
+        "nombre",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "comisiones": {
+      "columns_in_backup_not_in_migration": [
+        "monto_base",
+        "monto_comision",
+        "nomina_id",
+        "estado",
+        "empresa_id",
+        "porcentaje_aplicado",
+        "empleado_id",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "logs_actividad": {
+      "columns_in_backup_not_in_migration": [
+        "accion",
+        "usuario_id",
+        "detalles",
+        "modulo",
+        "empresa_id",
+        "creado_en",
+        "ip_address"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "clientes": {
+      "columns_in_backup_not_in_migration": [
+        "es_vip",
+        "telefono",
+        "fecha_nacimiento",
+        "email",
+        "empresa_id",
+        "estado",
+        "direccion",
+        "updated_at",
+        "cedula",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "logs_auditoria": {
+      "columns_in_backup_not_in_migration": [
+        "tipo_evento",
+        "usuario_id",
+        "descripcion",
+        "metadata",
+        "creado_en",
+        "ip_address"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "cita_productos": {
+      "columns_in_backup_not_in_migration": [
+        "producto_id",
+        "cantidad",
+        "precio_unitario",
+        "cita_id",
+        "subtotal",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "mensajes_ticket": {
+      "columns_in_backup_not_in_migration": [
+        "ticket_id",
+        "usuario_id",
+        "creado_en",
+        "mensaje",
+        "es_staff"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "servicios": {
+      "columns_in_backup_not_in_migration": [
+        "precio",
+        "categoria_id",
+        "descripcion",
+        "duracion_minutos",
+        "estado",
+        "empresa_id",
+        "updated_at",
+        "comision_porcentaje",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "movimientos_caja": {
+      "columns_in_backup_not_in_migration": [
+        "caja_id",
+        "descripcion",
+        "tipo",
+        "empresa_id",
+        "referencia_tipo",
+        "categoria",
+        "monto",
+        "metodo_pago"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "detalles_ventas": {
+      "columns_in_backup_not_in_migration": [
+        "venta_id",
+        "servicio_id",
+        "cantidad",
+        "subtotal",
+        "descuento",
+        "precio_unitario",
+        "updated_at",
+        "producto_id",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "campanas_marketing": {
+      "columns_in_backup_not_in_migration": [
+        "estado",
+        "empresa_id",
+        "mensaje",
+        "audiencia"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "tickets_soporte": {
+      "columns_in_backup_not_in_migration": [
+        "descripcion",
+        "actualizado_en",
+        "estado",
+        "empresa_id",
+        "prioridad",
+        "creado_en",
+        "asunto",
+        "usuario_creador_id"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "cita_servicios_adicionales": {
+      "columns_in_backup_not_in_migration": [
+        "servicio_id",
+        "cantidad",
+        "precio_unitario",
+        "cita_id",
+        "subtotal",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    },
+    "nominas": {
+      "columns_in_backup_not_in_migration": [
+        "fecha_inicio",
+        "empleado_id",
+        "estado",
+        "empresa_id",
+        "updated_at",
+        "metodo_pago",
+        "periodo_tipo",
+        "total_pagar",
+        "created_at"
+      ],
+      "columns_in_migration_not_in_backup": []
+    }
+  },
+  "matching_tables": [
+    "cajas",
+    "configuracion_global",
+    "respaldos_datos",
+    "articulos_ayuda",
+    "productos",
+    "usuarios_sistema",
+    "comunicacion",
+    "proveedores",
+    "prestamos",
+    "movimientos_inventario",
+    "suscripciones",
+    "ventas",
+    "planes",
+    "citas",
+    "empresas",
+    "comprobantes",
+    "empleados",
+    "pagos_prestamos",
+    "categorias",
+    "comisiones",
+    "logs_actividad",
+    "clientes",
+    "logs_auditoria",
+    "cita_productos",
+    "mensajes_ticket",
+    "servicios",
+    "movimientos_caja",
+    "detalles_ventas",
+    "campanas_marketing",
+    "tickets_soporte",
+    "cita_servicios_adicionales",
+    "nominas"
+  ]
+}

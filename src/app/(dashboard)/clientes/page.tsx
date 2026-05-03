@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
+import { registrarLog } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -223,9 +224,11 @@ export default function ClientesPage() {
       console.log('clienteData:', clienteData);
       
       // CÓDIGO REAL - LA TABLA EXISTE
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('clientes')
-        .insert(clienteData as any);
+        .insert(clienteData as any)
+        .select('id') // Obtener el ID del cliente insertado
+        .single();
         
       if (error) {
         console.error('Error creando cliente:', error);
@@ -234,6 +237,22 @@ export default function ClientesPage() {
       }
       
       showToast('Cliente registrado correctamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'CREAR_CLIENTE',
+        modulo: 'CLIENTES',
+        detalles: {
+          cliente_id: (data as any)?.id, // ✅ Usar el ID devuelto por la BD con casting
+          nombre: formData.nombre,
+          cedula: formData.cedula,
+          email: formData.email,
+          telefono: formData.telefono
+        }
+      });
+      
       setShowModal(false);
       setFormData({
         nombre: '',
@@ -347,6 +366,20 @@ export default function ClientesPage() {
       }
       
       showToast('Cliente eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_CLIENTE',
+        modulo: 'CLIENTES',
+        detalles: {
+          cliente_id: clienteToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadClientes();
       
       // TEMPORAL: Simulación (comentada)
@@ -774,6 +807,11 @@ export default function ClientesPage() {
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <span>¡</span>
+                      <span>Importante: Enviaremos un SMS de felicitación a nuestros clientes en su cumpleaños</span>
+                      <span>!</span>
+                    </p>
                   </div>
                   
                   <div className="flex items-center">

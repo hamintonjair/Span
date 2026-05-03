@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useCancelacionAutomatica } from '@/hooks/use-cancelacion-automatica';
+import { registrarLog } from '@/lib/audit';
 
 // Interfaces TypeScript
 interface Cita {
@@ -228,8 +229,6 @@ export default function CitasPage() {
     if (!user?.empresa_id) return;
 
     try {
-      console.log('🔍 Verificando citas pasadas para cancelación automática...');
-
       // Obtener fecha y hora actual en Bogotá
       const ahora = new Date();
       const ahoraBogota = new Date(ahora.toLocaleString("en-US", { timeZone: "America/Bogota" }));
@@ -250,7 +249,6 @@ export default function CitasPage() {
       }
 
       if (!citasPendientes || citasPendientes.length === 0) {
-        console.log('✅ No hay citas pendientes para verificar');
         return;
       }
 
@@ -261,11 +259,8 @@ export default function CitasPage() {
       });
 
       if (citasPasadas.length === 0) {
-        console.log('✅ No hay citas pasadas para cancelar');
         return;
       }
-
-      console.log(`📅 Found ${citasPasadas.length} citas pasadas para cancelar`);
 
       // Formatear fecha y hora actual para notas
       const fechaActualBogota = ahoraBogota.toLocaleString('es-CO', {
@@ -292,12 +287,30 @@ export default function CitasPage() {
         if (errorUpdate) {
           console.error(`Error cancelando cita ${cita.id}:`, errorUpdate);
         } else {
-          console.log(`✅ Cita ${cita.id} cancelada automáticamente`);
+          // Registrar log de auditoría para cancelación automática
+          await registrarLog(supabase, {
+            empresa_id: user?.empresa_id || undefined,
+            usuario_id: user?.id,
+            accion: 'CANCELAR_CITA',
+            modulo: 'CITAS',
+            detalles: {
+              cita_id: cita.id,
+              cliente_id: cita.cliente_id,
+              cliente_nombre: cita.clientes?.nombre || 'Desconocido',
+              empleado_id: cita.empleado_id,
+              empleado_nombre: cita.empleados?.nombre || 'Desconocido',
+              fecha_original: cita.fecha,
+              motivo_cancelacion: 'Anulada automáticamente por incumplimiento',
+              cancelado_por: 'Sistema Automático',
+              fecha_cancelacion: new Date().toISOString()
+            }
+          });
         }
       }
 
       // Recargar citas para actualizar la interfaz
       await cargarDatos();
+      
 
       if (citasPasadas.length > 0) {
         mostrarToast(
@@ -337,7 +350,6 @@ export default function CitasPage() {
   const cargarDatos = async (retryCount = 0) => {
     if (!user?.empresa_id) {
       if (retryCount < 3) {
-        console.log('⏳ Esperando empresa_id, reintentando en 1 segundo...');
         setTimeout(() => cargarDatos(retryCount + 1), 1000);
         return;
       } else {
@@ -349,16 +361,9 @@ export default function CitasPage() {
     
     setLoadingData(true);
     try {
-      console.log('🔄 Cargando datos para empresa:', user.empresa_id);
-      
       // Calcular rango de fechas visible en el calendario (mes actual + 1 mes antes y después)
       const inicioMes = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
       const finMes = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
-      
-      console.log('📅 Rango de fechas:', {
-        inicio: inicioMes.toISOString(),
-        fin: finMes.toISOString()
-      });
       
       // Cargar servicios
       const { data: serviciosData, error: serviciosError } = await (supabase as any)
@@ -387,7 +392,6 @@ export default function CitasPage() {
         throw clientesError;
       }
       setClientes(clientesData || []);
-      console.log('✅ Clientes cargados:', clientesData?.length || 0);
       
       // Cargar empleados
       const { data: empleadosData, error: empleadosError } = await (supabase as any)
@@ -402,7 +406,6 @@ export default function CitasPage() {
         throw empleadosError;
       }
       setEmpleados(empleadosData || []);
-      console.log('✅ Empleados cargados:', empleadosData?.length || 0);
 
       // Cargar citas con filtro de rango de fechas optimizado Y filtro de estado
       const { data: citasData, error: citasError } = await (supabase as any)
@@ -419,7 +422,6 @@ export default function CitasPage() {
         throw citasError;
       }
       setCitas(citasData || []);
-      console.log('✅ Citas cargadas (solo pendientes/confirmadas):', citasData?.length || 0);
       
       // Estadísticas de citas (solo pendientes/confirmadas para el calendario)
       const hoy = new Date();
@@ -430,15 +432,6 @@ export default function CitasPage() {
       
       const citasPendientes = citasData?.filter((cita: Cita) => cita.estado === 'pendiente') || [];
       const citasConfirmadas = citasData?.filter((cita: Cita) => cita.estado === 'confirmada') || [];
-      
-      console.log('📊 Estadísticas de citas (calendario):', {
-        total: citasData?.length || 0,
-        hoy: citasHoy.length,
-        pendientes: citasPendientes.length,
-        confirmadas: citasConfirmadas.length,
-        rango: `${inicioMes.toLocaleDateString()} - ${finMes.toLocaleDateString()}`,
-        filtro: 'solo pendientes y confirmadas'
-      });
 
     } catch (error) {
       console.error('💥 Error crítico cargando datos:', error);
@@ -503,11 +496,24 @@ export default function CitasPage() {
 
   // Función para resetear el formulario de nueva cita
   const resetFormularioNuevaCita = () => {
+    // Obtener fecha y hora actual en formato datetime-local (YYYY-MM-DDTHH:mm)
+    const now = new Date();
+    
+    // Usar método más robusto para formato datetime-local
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    // Formato: YYYY-MM-DDTHH:mm (sin segundos, sin zona horaria)
+    const fechaActual = `${year}-${month}-${day}T${hours}:${minutes}`;
+    
     setNuevaCita({
       cliente_id: '',
       empleado_id: '',
       servicios_ids: [],
-      fecha: '',
+      fecha: fechaActual,
       notas: ''
     });
     setBusquedaCliente('');
@@ -550,7 +556,17 @@ export default function CitasPage() {
     resetFormularioNuevaCita();
     
     if (fecha) {
-      setNuevaCita((prev: NuevaCita) => ({ ...prev, fecha }));
+      // Si la fecha viene del calendario (formato YYYY-MM-DD), agregar la hora actual
+      if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const fechaConHora = `${fecha}T${hours}:${minutes}`;
+        setNuevaCita((prev: NuevaCita) => ({ ...prev, fecha: fechaConHora }));
+      } else {
+        // Si ya tiene hora (formato YYYY-MM-DDTHH:mm), usarla tal cual
+        setNuevaCita((prev: NuevaCita) => ({ ...prev, fecha }));
+      }
     }
     
     setShowNuevaCitaModal(true);
@@ -591,21 +607,13 @@ export default function CitasPage() {
         return;
       }
       
-      console.log('✅ Validaciones pasadas. Preparando envío...');
-      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token && user?.id) {
-        console.log('🔄 Intentando crear sesión de Supabase con JWT...');
         try {
           const { data: refreshSession } = await supabase.auth.refreshSession();
-          if (refreshSession.session?.access_token) {
-            console.log('✅ Sesión refrescada exitosamente');
-          } else {
-            console.log('🔧 Usando JWT del hook user como fallback');
-          }
         } catch (refreshError) {
-          console.log('⚠️ No se pudo refrescar sesión, usando JWT existente');
+          // Using existing JWT
         }
       }
       
@@ -635,7 +643,8 @@ export default function CitasPage() {
         total_estimado: totalEstimado || 0,
         duracion_minutos: duracionTotal || 30,
         servicios_ids: nuevaCita.servicios_ids,
-        notas: nuevaCita.notas || null
+        notas: nuevaCita.notas || null,
+        usuario_id: user.id
       };
       
       const { data, error } = await (supabase as any)
@@ -654,11 +663,30 @@ export default function CitasPage() {
       
       mostrarToast('¡Cita agendada correctamente!', 'success');
       
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'CREAR_CITA',
+        modulo: 'CITAS',
+        detalles: {
+          cita_id: (data as any)?.id,
+          cliente_id: nuevaCita.cliente_id,
+          cliente_nombre: clientes.find(c => c.id === nuevaCita.cliente_id)?.nombre || 'Desconocido',
+          empleado_id: nuevaCita.empleado_id,
+          empleado_nombre: empleados.find(e => e.id === nuevaCita.empleado_id)?.nombre_completo || 'Desconocido',
+          servicios_ids: nuevaCita.servicios_ids,
+          servicios_nombres: nuevaCita.servicios_ids.map(id => servicios.find(s => s.id === id)?.nombre).filter(Boolean),
+          fecha: nuevaCita.fecha,
+          total_estimado: totalEstimado,
+          creado_por: user?.id,
+          fecha_creacion: new Date().toISOString()
+        }
+      });
+      
       // Resetear formulario completo
       resetFormularioNuevaCita();
       setShowNuevaCitaModal(false);
-      
-      console.log('🔍 Modal cerrado y formulario reseteado');
     } catch (error) {
       console.error('❌ Error creando cita:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -684,6 +712,23 @@ export default function CitasPage() {
       if (error) throw error;
 
       await cargarDatos();
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'CREAR_CLIENTE',
+        modulo: 'CLIENTES',
+        detalles: {
+          cliente_id: (data as any)?.id,
+          nombre: nuevoCliente.nombre,
+          telefono: nuevoCliente.telefono,
+          email: nuevoCliente.email,
+          creado_desde: 'módulo_citas',
+          creado_por: user?.id,
+          fecha_creacion: new Date().toISOString()
+        }
+      });
       
       setNuevaCita((prev: NuevaCita) => ({...prev, cliente_id: data.id}));
       
@@ -725,8 +770,6 @@ export default function CitasPage() {
         console.error('Error actualizando estado de cita:', error);
         throw error;
       }
-
-      console.log('✅ Estado de cita actualizado a "en_atencion"');
 
       // Recargar datos para que la cita desaparezca del calendario
       await cargarDatos();
@@ -794,30 +837,30 @@ export default function CitasPage() {
   };
 
   const handleVerMasClick = (day: number) => {
-    console.log('🔍 Click en "ver más" del día:', day);
     const citasDelDia = getCitasForDay(day);
-    console.log('📋 Citas del día:', citasDelDia);
     setSelectedDayCitas(citasDelDia);
     setShowCitasDiaModal(true);
   };
 
   const handleCitaClick = (cita: Cita) => {
-    console.log('🔍 Click en cita:', cita.id);
     setSelectedCita(cita);
     setShowCitaDetalleModal(true);
   };
 
   const handleDayClick = (day: number) => {
-    console.log('🔍 Click en día vacío:', day);
     // Capturar la fecha exacta del día seleccionado
     const selected = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     
-    // Formatear la fecha para el input datetime-local (YYYY-MM-DDTHH:mm)
-    const fechaFormateada = new Date(selected.getTime() - selected.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
+    // Obtener hora actual
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
     
-    console.log('📅 Fecha seleccionada:', fechaFormateada);
+    // Formatear la fecha para el input datetime-local (YYYY-MM-DDTHH:mm) con hora actual
+    const year = selected.getFullYear();
+    const month = String(selected.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(selected.getDate()).padStart(2, '0');
+    const fechaFormateada = `${year}-${month}-${dayStr}T${hours}:${minutes}`;
     
     // Resetear formulario excepto la fecha
     setNuevaCita({
@@ -980,7 +1023,6 @@ export default function CitasPage() {
     const coincide = nombre.includes(busqueda) || cedula.includes(busqueda);
     
     if (coincide && cedula === busqueda) {
-      console.log('🎯 Cliente encontrado por cédula:', cliente);
       setNuevaCita((prev: NuevaCita) => ({...prev, cliente_id: cliente.id}));
       setBusquedaCliente(cliente.nombre);
     }

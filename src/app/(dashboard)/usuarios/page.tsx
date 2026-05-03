@@ -6,6 +6,9 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase-client';
+import { registrarLog } from '@/lib/audit';
+import { verificarLimite } from '@/lib/subscriptions';
+import { actualizarClaveEmpleadoAction } from '@/app/actions/empresa';
 import { 
   UserIcon, 
   UserGroupIcon, 
@@ -95,14 +98,13 @@ interface Empresa {
   id: string;
   nombre: string;
   plan_id: string;
-  limite_empleados: number;
   total_empleados?: number;
 }
 
 interface Plan {
   id: string;
   nombre: string;
-  limite_usuarios: number;
+  max_usuarios: number;
 }
 
 export default function UsuariosPage() {
@@ -121,6 +123,8 @@ export default function UsuariosPage() {
   const [creating, setCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [rolFilter, setRolFilter] = useState<string>('todos');
+  const [limiteAlcanzado, setLimiteAlcanzado] = useState(false);
+  const [limiteInfo, setLimiteInfo] = useState<any>(null);
   
   // Paginación
   const [itemsPerPage] = useState(10);
@@ -147,7 +151,6 @@ useEffect(() => {
   // Forzar recarga de la página si hay errores de tabla no encontrada
   const handleTableError = (error: any) => {
     if (error?.code === 'PGRST204' || error?.message?.includes('relation "usuarios" does not exist')) {
-      console.log('Error de tabla detectado, refrescando página...');
       window.location.reload();
     }
   };
@@ -176,7 +179,7 @@ useEffect(() => {
         .from('empresas')
         .select(`
           *,
-          planes(nombre, limite_usuarios)
+          planes(nombre, max_usuarios)
         `)
         .eq('id', user.empresa_id)
         .single();
@@ -258,8 +261,8 @@ useEffect(() => {
       const usuariosActivos = usuarios.filter(u => u.activo === true).length;
       const planActual = planes.find(p => p.id === empresa.plan_id);
       
-      if (planActual && usuariosActivos >= planActual.limite_usuarios) {
-        showNotification(`Has alcanzado el límite de ${planActual.limite_usuarios} usuarios para tu plan ${planActual.nombre}.`, 'error');
+      if (planActual && usuariosActivos >= planActual.max_usuarios) {
+        showNotification(`Has alcanzado el límite de ${planActual.max_usuarios} usuarios para tu plan ${planActual.nombre}.`, 'error');
         return;
       }
 
@@ -291,9 +294,31 @@ useEffect(() => {
 
       if (insertError) throw insertError;
 
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'CREAR_USUARIO',
+        modulo: 'USUARIOS',
+        detalles: {
+          usuario_creado_id: data.user?.id,
+          nombre: formData.nombre,
+          email: formData.email,
+          rol: formData.rol,
+          empresa_id: user?.empresa_id,
+          creado_por: user?.id,
+          fecha_creacion: new Date().toISOString()
+        }
+      });
+
       // Resetear formulario y cerrar modal
       setFormData({ nombre: '', email: '', rol: 'recepcionista', password: '' });
       setShowModal(false);
+      
+      // Limpiar filtros y resetear paginación para asegurar que el nuevo usuario aparezca
+      setSearchTerm('');
+      setRolFilter('todos');
+      setItemOffset(0);
       
       // Recargar usuarios
       await loadUsuarios();
@@ -338,6 +363,25 @@ useEffect(() => {
         showNotification('Error al actualizar estado', 'error');
         return;
       }
+
+      // Registrar log de auditoría
+      await registrarLog(createClient(), {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ACTUALIZAR_USUARIO',
+        modulo: 'USUARIOS',
+        detalles: {
+          usuario_id: usuarioId,
+          nombre: usuario?.nombre,
+          email: usuario?.email,
+          rol: usuario?.rol,
+          cambio_estado: true,
+          estado_nuevo: nuevoEstado,
+          estado_anterior: !nuevoEstado,
+          modificado_por: user?.id,
+          fecha_modificacion: new Date().toISOString()
+        }
+      });
 
       await loadUsuarios();
       showNotification(
@@ -412,12 +456,14 @@ useEffect(() => {
 
       // Solo actualizar contraseña si se proporciona una nueva
       if (formData.password) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
+        const result = await actualizarClaveEmpleadoAction(
           selectedUsuario.id,
-          { password: formData.password }
+          formData.password
         );
         
-        if (authError) throw authError;
+        if (!result.success) {
+          throw new Error(result.error || 'Error al actualizar contraseña');
+        }
       }
 
       const { error } = await supabase
@@ -427,6 +473,26 @@ useEffect(() => {
         .select(); // Forzar que devuelva el registro actualizado
 
       if (error) throw error;
+
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ACTUALIZAR_USUARIO',
+        modulo: 'USUARIOS',
+        detalles: {
+          usuario_id: selectedUsuario.id,
+          nombre_anterior: selectedUsuario.nombre,
+          nombre_nuevo: formData.nombre,
+          email_anterior: selectedUsuario.email,
+          email_nuevo: formData.email,
+          rol_anterior: selectedUsuario.rol,
+          rol_nuevo: formData.rol,
+          cambio_password: !!formData.password,
+          actualizado_por: user?.id,
+          fecha_actualizacion: new Date().toISOString()
+        }
+      });
 
       // Resetear formulario y cerrar modal
       setFormData({ nombre: '', email: '', rol: 'recepcionista', password: '' });
@@ -467,14 +533,31 @@ useEffect(() => {
   const currentUsuarios = filteredUsuarios.slice(itemOffset, endOffset + 1);
   const pageCount = Math.ceil(totalCount / itemsPerPage);
 
-  // Verificar límite de usuarios
-  const puedeCrearUsuario = () => {
-    if (!empresa || !planes.length) return false;
+  // Verificar límite de usuarios usando el helper
+  const verificarLimiteUsuarios = async () => {
+    if (!user?.empresa_id) return false;
     
-    const usuariosActivos = usuarios.filter(u => u.activo === true).length;
-    const planActual = planes.find(p => p.id === empresa.plan_id);
-    
-    return planActual ? usuariosActivos < planActual.limite_usuarios : false;
+    try {
+      const resultado = await verificarLimite(user.empresa_id, 'usuarios');
+      setLimiteInfo(resultado);
+      
+      if (resultado.alcanzado) {
+        setLimiteAlcanzado(true);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error verificando límite:', error);
+      return false;
+    }
+  };
+
+  const handleCrearUsuario = async () => {
+    const puedeCrear = await verificarLimiteUsuarios();
+    if (puedeCrear) {
+      setShowModal(true);
+    }
   };
 
   if (loading) {
@@ -508,8 +591,7 @@ useEffect(() => {
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={() => setShowModal(true)}
-              disabled={!puedeCrearUsuario()}
+              onClick={handleCrearUsuario}
               className="flex items-center gap-2"
             >
               <UserIcon className="w-4 h-4" />
@@ -666,8 +748,8 @@ useEffect(() => {
                   ? 'Intenta ajustar los filtros de búsqueda.' 
                   : 'Los usuarios aparecerán aquí cuando los agregues al sistema.'}
               </p>
-              {!searchTerm && rolFilter === 'todos' && puedeCrearUsuario() && (
-                <Button onClick={() => setShowModal(true)}>
+              {!searchTerm && rolFilter === 'todos' && (
+                <Button onClick={handleCrearUsuario}>
                   <UserIcon className="w-4 h-4 mr-2" />
                   Crear Primer Usuario
                 </Button>
@@ -943,6 +1025,57 @@ useEffect(() => {
                     className="flex-1"
                   >
                     {creating ? 'Actualizando...' : 'Actualizar Usuario'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal de Límite Alcanzado */}
+        {limiteAlcanzado && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <XMarkIcon className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Límite Alcanzado</h3>
+                <p className="text-gray-600 mt-2">
+                  Has llegado al límite de tu plan actual
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {limiteInfo && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Plan actual:</span>
+                      <span className="font-semibold">{limiteInfo.plan_nombre}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Usuarios activos:</span>
+                      <span className="font-semibold">{limiteInfo.actual}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Límite del plan:</span>
+                      <span className="font-semibold text-red-600">{limiteInfo.limite}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setLimiteAlcanzado(false)}
+                    className="flex-1"
+                  >
+                    Cerrar
+                  </Button>
+                  <Button
+                    onClick={() => window.location.href = '/suscripcion'}
+                    className="flex-1"
+                  >
+                    Ver Planes
                   </Button>
                 </div>
               </CardContent>

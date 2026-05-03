@@ -85,9 +85,7 @@ export async function cerrarCaja(
       };
     }
 
-    // Calcular total esperado (base inicial + ventas - gastos)
-    // NOTA: Cuando implementemos la tabla ventas, aquí haremos el cálculo real
-    const totalEsperado = caja.base_inicial; // Temporal, se actualizará con ventas reales
+    const totalEsperado = caja.base_inicial;
 
     // Calcular diferencia
     const diferencia = montoFinal - totalEsperado;
@@ -108,7 +106,6 @@ export async function cerrarCaja(
       throw new Error(`Error al cerrar caja: ${errorActualizacion.message}`);
     }
 
-    // TODO: Registrar arqueo en tabla de auditoría cuando la creemos
     console.log(`Arqueo de caja - Esperado: ${totalEsperado}, Real: ${montoFinal}, Diferencia: ${diferencia}`);
 
     return {

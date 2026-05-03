@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { registrarLog } from '@/lib/audit';
 import { 
   BuildingOfficeIcon, 
   MagnifyingGlassIcon, 
@@ -108,7 +109,6 @@ export default function ProveedoresPage() {
     
     try {
       setLoading(true);
-      console.log('Cargando proveedores para empresa:', user.empresa_id);
       
       const { data, error, count } = await supabase
         .from('proveedores')
@@ -116,15 +116,12 @@ export default function ProveedoresPage() {
         .eq('empresa_id', user.empresa_id)
         .order('created_at', { ascending: false });
 
-      console.log('Respuesta de Supabase (proveedores):', { data, error, count });
-
       if (error) {
         console.error('Error cargando proveedores:', error);
         showToast('Error cargando proveedores: ' + error.message, 'error');
         return;
       }
 
-      console.log('Proveedores cargados:', data);
       setProveedores(data || []);
       setFilteredProveedores(data || []);
       setTotalCount(count || 0);
@@ -192,8 +189,6 @@ export default function ProveedoresPage() {
           estado: formData.estado
         };
         
-        console.log('Actualizando proveedor:', updateData);
-        
         const { error } = await (supabase as any)
           .from('proveedores')
           .update(updateData)
@@ -206,6 +201,23 @@ export default function ProveedoresPage() {
         }
         
         showToast('Proveedor actualizado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ACTUALIZAR_PROVEEDOR',
+          modulo: 'PROVEEDORES',
+          detalles: {
+            proveedor_id: editingProveedor.id,
+            nombre_anterior: editingProveedor.nombre,
+            nombre_nuevo: formData.nombre,
+            contacto_anterior: editingProveedor.contacto_nombre,
+            contacto_nuevo: formData.contacto_nombre,
+            actualizado_por: user?.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
       } else {
         // Crear nuevo proveedor
         const proveedorData = {
@@ -220,11 +232,11 @@ export default function ProveedoresPage() {
           created_at: new Date().toISOString()
         };
         
-        console.log('Creando proveedor:', proveedorData);
-        
-        const { error } = await (supabase as any)
+        const { data, error } = await (supabase as any)
           .from('proveedores')
-          .insert(proveedorData);
+          .insert(proveedorData)
+          .select('id')
+          .single();
           
         if (error) {
           console.error('Error creando proveedor:', error);
@@ -233,6 +245,23 @@ export default function ProveedoresPage() {
         }
         
         showToast('Proveedor creado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CREAR_PROVEEDOR',
+          modulo: 'PROVEEDORES',
+          detalles: {
+            proveedor_id: (data as any)?.id,
+            nombre: formData.nombre,
+            contacto: formData.contacto_nombre,
+            telefono: formData.telefono,
+            email: formData.email,
+            creado_por: user?.id,
+            fecha_creacion: new Date().toISOString()
+          }
+        });
       }
       
       setShowModal(false);
@@ -301,6 +330,20 @@ export default function ProveedoresPage() {
       }
       
       showToast('Proveedor eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_PROVEEDOR',
+        modulo: 'PROVEEDORES',
+        detalles: {
+          proveedor_id: proveedorToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadProveedores();
     } catch (error) {
       console.error('Error inesperado:', error);

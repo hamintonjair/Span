@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase-client';
 import { useToast } from '@/components/ui/toast';
+import { registrarLog } from '@/lib/audit';
+import { verificarLimite } from '@/lib/subscriptions';
 import {
   UserPlusIcon,
   MagnifyingGlassIcon,
@@ -59,6 +61,8 @@ export default function EmpleadosPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [empleadoToDelete, setEmpleadoToDelete] = useState<string | null>(null);
   const [editingEmpleado, setEditingEmpleado] = useState<Empleado | null>(null);
+  const [limiteAlcanzado, setLimiteAlcanzado] = useState(false);
+  const [limiteInfo, setLimiteInfo] = useState<any>(null);
   const [formData, setFormData] = useState<EmpleadoFormData>({
     nombre_completo: '',
     email_empleado: '',
@@ -118,6 +122,20 @@ export default function EmpleadosPage() {
       }
       
       showToast('Empleado eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_EMPLEADO',
+        modulo: 'EMPLEADOS',
+        detalles: {
+          empleado_id: empleadoToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadEmpleados();
     } catch (error) {
       console.error('Error inesperado:', error);
@@ -193,17 +211,47 @@ export default function EmpleadosPage() {
         }
         
         showToast('Empleado actualizado exitosamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ACTUALIZAR_EMPLEADO',
+          modulo: 'EMPLEADOS',
+          detalles: {
+            empleado_id: editingEmpleado.id,
+            nombre_anterior: editingEmpleado.nombre_completo,
+            nombre_nuevo: formData.nombre_completo,
+            email_anterior: editingEmpleado.email_empleado,
+            email_nuevo: formData.email_empleado,
+            actualizado_por: user?.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
       } else {
+        // Validación de seguridad: verificar límite antes de insertar
+        if (!user?.empresa_id) {
+          showToast('Error: Empresa no identificada', 'error');
+          return;
+        }
+
+        const verificacionLimites = await verificarLimite(user.empresa_id, 'empleados');
+        if (verificacionLimites.alcanzado) {
+          showToast('Has alcanzado el límite de empleados de tu plan. Actualiza tu suscripción para agregar más.', 'error');
+          return;
+        }
+
         // Crear nuevo empleado
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('empleados')
           .insert({
             ...formData,
             empresa_id: user?.empresa_id,
-            estado: 'activo', // ✅ Forzar el valor correcto para la constraint
+            estado: 'activo', // Forzar el valor correcto para la constraint
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          });
+          })
+          .select('id').single();
           
         if (error) {
           console.error('Error creando empleado:', error);
@@ -212,6 +260,22 @@ export default function EmpleadosPage() {
         }
         
         showToast('Empleado creado exitosamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CREAR_EMPLEADO',
+          modulo: 'EMPLEADOS',
+          detalles: {
+            empleado_id: (data as any)?.id,
+            nombre: formData.nombre_completo,
+            rol: 'empleado',
+            email: formData.email_empleado,
+            creado_por: user?.id,
+            fecha_creacion: new Date().toISOString()
+          }
+        });
       }
       
       // Limpiar y cerrar modal
@@ -260,6 +324,48 @@ export default function EmpleadosPage() {
     setItemOffset(0); // Resetear a primera página al filtrar
   }, [empleados, searchTerm]);
 
+  // Verificar límite de empleados usando el helper
+  const verificarLimiteEmpleados = async () => {
+    if (!user?.empresa_id) return false;
+    
+    try {
+      const resultado = await verificarLimite(user.empresa_id, 'empleados');
+      setLimiteInfo(resultado);
+      
+      if (resultado.alcanzado) {
+        setLimiteAlcanzado(true);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error verificando límite:', error);
+      return false;
+    }
+  };
+
+  const handleCrearEmpleado = async () => {
+    const puedeCrear = await verificarLimiteEmpleados();
+    if (puedeCrear) {
+      setEditingEmpleado(null);
+      setFormData({
+        nombre_completo: '',
+        email_empleado: '',
+        telefono: '',
+        cedula: '',
+        direccion: '',
+        sueldo_base: 0,
+        porcentaje_comision: 0,
+        fecha_contratacion: '',
+        estado: 'activo'
+      });
+      setShowModal(true);
+    } else {
+      // Mostrar toast de error cuando límite alcanzado
+      showToast('Has alcanzado el límite de empleados de tu plan. Actualiza tu suscripción para agregar más.', 'error');
+    }
+  };
+
   useEffect(() => {
     if (user?.empresa_id) {
       loadEmpleados();
@@ -303,21 +409,7 @@ export default function EmpleadosPage() {
             </div>
           </div>
           <Button
-            onClick={() => {
-              setEditingEmpleado(null);
-              setFormData({
-                nombre_completo: '',
-                email_empleado: '',
-                telefono: '',
-                cedula: '',
-                direccion: '',
-                sueldo_base: 0,
-                porcentaje_comision: 0,
-                fecha_contratacion: '',
-                estado: 'activo' // ✅ Agregado campo estado
-              });
-              setShowModal(true);
-            }}
+            onClick={handleCrearEmpleado}
             className="flex items-center"
           >
             <UserPlusIcon className="h-4 w-4 mr-2" />
@@ -660,6 +752,56 @@ export default function EmpleadosPage() {
                   disabled={loading}
                 >
                   {loading ? 'Eliminando...' : 'Eliminar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Límite Alcanzado */}
+        {limiteAlcanzado && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TrashIcon className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Límite Alcanzado</h3>
+                <p className="text-gray-600 mt-2">
+                  Has llegado al límite de empleados de tu plan actual
+                </p>
+              </div>
+              
+              {limiteInfo && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">Plan actual:</span>
+                    <span className="font-semibold">{limiteInfo.plan_nombre}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">Empleados activos:</span>
+                    <span className="font-semibold">{limiteInfo.actual}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Límite del plan:</span>
+                    <span className="font-semibold text-red-600">{limiteInfo.limite}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setLimiteAlcanzado(false)}
+                  className="flex-1"
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={() => window.location.href = '/suscripcion'}
+                  className="flex-1"
+                >
+                  Ver Planes
                 </Button>
               </div>
             </div>

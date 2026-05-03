@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { createClient } from '@/lib/supabase/client';
 import {
   HomeIcon,
   CreditCardIcon,
@@ -903,6 +904,46 @@ export default function AyudaPage() {
   const [busqueda, setBusqueda] = useState('');
   const [modulosExpandidos, setModulosExpandidos] = useState<Set<string>>(new Set());
   const [filtroPlan, setFiltroPlan] = useState<'todos' | 'basico' | 'premium' | 'admin'>('todos');
+  const [configGlobal, setConfigGlobal] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfigGlobal = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('configuracion_global')
+          .select('titular')
+          .single();
+
+        if (error) {
+          console.error('Error cargando configuración global:', error);
+        } else {
+          setConfigGlobal(data);
+        }
+      } catch (error) {
+        console.error('Error general cargando configuración global:', error);
+      }
+    };
+
+    fetchConfigGlobal();
+  }, []);
+
+  const getNombreEmpresa = () => {
+    return configGlobal?.titular;
+  };
+
+  // Crear versión modificada del array con nombre dinámico
+  const modulosAyudaConNombre = useMemo(() => {
+    return modulosAyuda.map(modulo => {
+      if (modulo.descripcion && modulo.descripcion.includes('BeautyPro')) {
+        return {
+          ...modulo,
+          descripcion: modulo.descripcion.replace('BeautyPro', getNombreEmpresa())
+        };
+      }
+      return modulo;
+    });
+  }, [configGlobal]);
 
   // Toggle de módulo expandido
   const toggleModulo = (id: string) => {
@@ -927,7 +968,7 @@ export default function AyudaPage() {
 
   // Filtrar módulos según búsqueda y filtro de plan
   const modulosFiltrados = useMemo(() => {
-    let filtrados = modulosAyuda;
+    let filtrados = modulosAyudaConNombre;
     
     // Filtrar por plan
     if (filtroPlan !== 'todos') {
@@ -956,9 +997,9 @@ export default function AyudaPage() {
 
   // Estadísticas de ayuda
   const stats = [
-    { label: 'Módulos', value: modulosAyuda.length },
-    { label: 'Guías', value: modulosAyuda.reduce((acc, m) => acc + m.contenido.length, 0) },
-    { label: 'Consejos', value: modulosAyuda.reduce((acc, m) => acc + m.contenido.reduce((a, c) => a + (c.tips?.length || 0), 0), 0) },
+    { label: 'Módulos', value: modulosAyudaConNombre.length },
+    { label: 'Guías', value: modulosAyudaConNombre.reduce((acc, m) => acc + m.contenido.length, 0) },
+    { label: 'Consejos', value: modulosAyudaConNombre.reduce((acc, m) => acc + m.contenido.reduce((a, c) => a + (c.tips?.length || 0), 0), 0) },
   ];
 
   return (
@@ -977,7 +1018,7 @@ export default function AyudaPage() {
               ¿Cómo podemos ayudarte hoy?
             </h1>
             <p className="text-amber-100 text-lg mb-8 max-w-2xl">
-              Manual completo de BeautyPro. Busca temas específicos o explora nuestros módulos de aprendizaje.
+              Manual completo de {getNombreEmpresa()}. Busca temas específicos o explora nuestros módulos de aprendizaje.
             </p>
 
             {/* Buscador Principal */}

@@ -13,7 +13,7 @@ export default function NotFound() {
     // Si hay un usuario autenticado, redirigir según su rol
     if (user) {
       if (user.rol === 'admin_global') {
-        router.push('/admin-dashboard');
+        router.push('/admin/dashboard-admin');
       } else if (user.empresa_id) {
         router.push('/dashboard-empresa');
       } else {

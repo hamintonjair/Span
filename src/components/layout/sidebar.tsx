@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { usePlanPermissions } from '@/hooks/usePlanPermissions';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -30,7 +31,9 @@ import {
   PresentationChartBarIcon,
   ArrowRightOnRectangleIcon,
   StarIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  LifebuoyIcon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -43,7 +46,7 @@ interface SidebarItem {
 }
 
 interface SidebarProps {
-  userRole: 'admin_global' | 'admin_empresa' | 'estilista' | 'recepcionista' | 'empleado';
+  userRole: 'admin_global' | 'admin_empresa' | 'estilista' | 'recepcionista' | 'empleado' | 'soporte' | 'ventas';
   empresaNombre?: string;
   userName?: string;
 }
@@ -52,59 +55,59 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   // Dashboard principal
   {
     title: 'Dashboard',
-    href: userRole === 'admin_global' ? '/admin/dashboard-admin' : '/dashboard-empresa',
+    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/dashboard-admin' : '/dashboard-empresa',
     icon: <HomeIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    roles: ['admin_global', 'admin_empresa', 'estilista', 'recepcionista', 'empleado', 'soporte', 'ventas'],
     section: 'main'
   },
 
-  // Finanzas (solo admin_global y admin_empresa)
+  // Finanzas (solo admin_global y roles administrativos)
   {
     title: 'Finanzas',
-    href: userRole === 'admin_global' ? '/admin/finanzas' : '/finanzas-empresa',
+    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/finanzas' : '/finanzas-empresa',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa'],
+    roles: ['admin_global', 'admin_empresa', 'soporte', 'ventas'],
     section: 'main'
   },
 
-  // Auditoría (solo admin_global)
+  // Auditoría (solo admin_global y roles administrativos)
   {
     title: 'Auditoría',
     href: '/admin/auditoria',
     icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'saas'
   },
 
-  // Comunicación (solo admin_global)
+  // Comunicación (solo admin_global y roles administrativos)
   {
     title: 'Comunicación',
     href: '/admin/comunicacion',
     icon: <BellIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'saas'
   },
 
-  // Administración SaaS (solo admin_global)
+  // Administración SaaS (solo admin_global y roles administrativos)
   {
     title: 'Empresas',
     href: '/admin/empresas',
     icon: <BuildingOfficeIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'saas'
   },
   {
     title: 'Suscripciones',
     href: '/admin/suscripciones',
     icon: <CreditCardIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'saas'
   },
   {
     title: 'Planes y Beneficios',
     href: '/admin/planes',
     icon: <Cog6ToothIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'saas'
   },
 
@@ -113,6 +116,14 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Mi Suscripción',
     href: '/suscripcion',
     icon: <CurrencyDollarIcon className="w-5 h-5" />,
+    roles: ['admin_empresa'],
+    section: 'main'
+  },
+  // Auditoría (solo admin_empresa)
+  {
+    title: 'Auditoría',
+    href: '/auditoria',
+    icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
     roles: ['admin_empresa'],
     section: 'main'
   },
@@ -190,9 +201,9 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   },
   {
     title: 'Usuarios',
-    href: userRole === 'admin_global' ? '/admin/usuarios' : '/usuarios',
+    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/usuarios' : '/usuarios',
     icon: <UsersIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa'],
+    roles: ['admin_global', 'admin_empresa', 'soporte', 'ventas'],
     section: 'main'
   },
 
@@ -201,7 +212,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     title: 'Caja',
     href: '/caja',
     icon: <CreditCardIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista'],
+    roles: ['admin_empresa', 'recepcionista','estilista'],
     section: 'main'
   },
   {
@@ -273,27 +284,84 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'platform'
   },
   {
+    title: 'Soporte',
+    href: '/dashboard/soporte',
+    icon: <LifebuoyIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista'],
+    section: 'platform'
+  },
+  {
+    title: 'Centro de Ayuda',
+    href: '/dashboard/centro-ayuda',
+    icon: <BookOpenIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    section: 'platform'
+  },
+  {
+    title: 'Centro de Ayuda',
+    href: '/admin/centro-ayuda',
+    icon: <BookOpenIcon className="w-5 h-5" />,
+    roles: ['admin_global', 'soporte', 'ventas'],
+    section: 'platform'
+  },
+  {
     title: 'Configuración',
-    href: '/configuracion',
+    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/configuracion' : '/configuracion',
     icon: <CogIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa'],
+    roles: ['admin_global', 'admin_empresa', 'soporte', 'ventas'],
+    section: 'platform'
+  },
+  {
+    title: 'Soporte',
+    href: '/admin/soporte',
+    icon: <LifebuoyIcon className="w-5 h-5" />,
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'platform'
   },
   {
     title: 'Staff Técnico',
-    href: '/staff-tecnico',
+    href: '/admin/staff',
     icon: <UserGroupIcon className="w-5 h-5" />,
-    roles: ['admin_global'],
+    roles: ['admin_global', 'soporte', 'ventas'],
     section: 'platform'
   }
 ];
 
 export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [configGlobal, setConfigGlobal] = useState<any>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useJWTAuth();
   const { loading, ...permissions } = usePlanPermissions();
+
+  // Obtener configuración global
+  useEffect(() => {
+    const fetchConfigGlobal = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('configuracion_global')
+          .select('titular')
+          .single();
+
+        if (error) {
+          console.error('Error cargando configuración global:', error);
+        } else {
+          setConfigGlobal(data);
+        }
+      } catch (error) {
+        console.error('Error general cargando configuración global:', error);
+      }
+    };
+
+    fetchConfigGlobal();
+  }, []);
+
+  // Función para obtener el nombre de la empresa
+  const getNombreEmpresa = () => {
+    return configGlobal?.titular;
+  };
 
   const handleLogout = async () => {
     try {
@@ -306,8 +374,8 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
 
   const filteredItems = getSidebarItems(userRole).filter((item: SidebarItem) => item.roles.includes(userRole));
 
-  // Agrupar items por sección para admin_global
-  const groupedItems = userRole === 'admin_global' ? {
+  // Agrupar items por sección para roles administrativos
+  const groupedItems = (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? {
     main: filteredItems.filter((item: SidebarItem) => item.section === 'main'),
     saas: filteredItems.filter((item: SidebarItem) => item.section === 'saas'),
     platform: filteredItems.filter((item: SidebarItem) => item.section === 'platform')
@@ -378,7 +446,7 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
               <BuildingOfficeIcon className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">BeautyPro</h1>
+              <h1 className="font-bold text-lg">{getNombreEmpresa()}</h1>
               {empresaNombre && (
                 <p className="text-xs text-amber-200">{empresaNombre}</p>
               )}
@@ -395,7 +463,7 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto">
-        {userRole === 'admin_global' ? (
+        {(userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? (
           <>
             {renderSection('Principal', groupedItems.main || [])}
             {renderSection('Administración SaaS', groupedItems.saas || [])}

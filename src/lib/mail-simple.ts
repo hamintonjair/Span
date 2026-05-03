@@ -32,10 +32,13 @@ export function generateWelcomeTemplate(
   empresaNombre: string,
   userEmail: string,
   tempPassword: string,
-  loginUrl: string
+  loginUrl: string,
+  sistemaNombre?: string
 ): string {
+  const nombreSistema = sistemaNombre ;
+  
   return `
-    <h2>¡Bienvenido a BeautyPro!</h2>
+    <h2>¡Bienvenido a ${nombreSistema}!</h2>
     
     <p>
       Estimado administrador de <strong>${empresaNombre}</strong>,
@@ -43,7 +46,7 @@ export function generateWelcomeTemplate(
     
     <p>
       Tu salón de belleza ha sido registrado exitosamente en nuestra plataforma. 
-      BeautyPro es el sistema completo que transformará la gestión de tu negocio.
+      ${nombreSistema} es el sistema completo que transformará la gestión de tu negocio.
     </p>
     
     <div style="background: #FEF3C7; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -66,7 +69,7 @@ export function generateWelcomeTemplate(
     </div>
     
     <p>
-      <strong>🌟 ¿Qué puedes hacer con BeautyPro?</strong>
+      <strong>🌟 ¿Qué puedes hacer con ${nombreSistema}?</strong>
     </p>
     
     <ul>
@@ -79,7 +82,7 @@ export function generateWelcomeTemplate(
     
     <div style="margin-top: 30px 0;">
       <p style="text-align: center;">
-        <em>¡Gracias por confiar en BeautyPro para hacer crecer tu negocio!</em>
+        <em>¡Gracias por confiar en ${nombreSistema} para hacer crecer tu negocio!</em>
       </p>
     </div>
   `;
@@ -88,8 +91,11 @@ export function generateWelcomeTemplate(
 // Plantilla de recuperación de contraseña
 export function generatePasswordResetTemplate(
   userName: string,
-  resetUrl: string
+  resetUrl: string,
+  sistemaNombre?: string
 ): string {
+  const nombreSistema = sistemaNombre;
+  
   return `
     <h2>🔑 Restablecimiento de Contraseña</h2>
     
@@ -98,7 +104,7 @@ export function generatePasswordResetTemplate(
     </p>
     
     <p>
-      Hemos recibido una solicitud para restablecer tu contraseña en BeautyPro. 
+      Hemos recibido una solicitud para restablecer tu contraseña en ${nombreSistema}. 
       Si no realizaste esta solicitud, puedes ignorar este correo de forma segura.
     </p>
     
@@ -139,7 +145,8 @@ export function generateReceiptTemplate(
     fecha: string;
     total: number;
     metodo_pago: string;
-  }
+  },
+  sistemaNombre?: string
 ): string {
   return `
     <h2>🧾 Recibo Digital</h2>

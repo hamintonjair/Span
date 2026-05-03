@@ -10,6 +10,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { registrarLog } from '@/lib/audit';
 import { 
   EyeIcon, 
   PrinterIcon, 
@@ -339,8 +340,6 @@ export default function VentasPage() {
           })
           .eq('id', ventaSeleccionada.id);
 
-        console.log('Resultado de actualización:', resultado);
-
         if (resultado.error) {
           console.error('Error anulando venta:', resultado.error.message);
 
@@ -358,8 +357,20 @@ export default function VentasPage() {
           });
           return;
         }
-
-        console.log('Venta anulada exitosamente');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ANULAR_VENTA',
+          modulo: 'VENTAS',
+          detalles: {
+            venta_id: ventaSeleccionada.id,
+            total: ventaSeleccionada.total,
+            cliente: ventaSeleccionada.clientes?.nombre || 'Cliente general',
+            metodo_pago: ventaSeleccionada.metodo_pago
+          }
+        });
       } catch (catchError) {
         console.error('Error catch en anulación:', catchError);
         return;
@@ -370,8 +381,6 @@ export default function VentasPage() {
 
       for (const detalle of productosFisicos) {
         if (detalle.producto_id) {
-          console.log(`Procesando producto ${detalle.producto_id}, cantidad: ${detalle.cantidad}`);
-
           try {
             const { data: productoData, error: errorStock } = await supabase
               .from('productos')
@@ -379,15 +388,11 @@ export default function VentasPage() {
               .eq('id', detalle.producto_id)
               .single();
 
-            console.log('Datos del producto:', { productoData, errorStock });
-
             if (!errorStock && productoData) {
               // Usamos los tipos correctos basados en la estructura de la BD
               const stockActual = Number((productoData as any).stock) || 0;
               const cantidadDevuelta = Number(detalle.cantidad) || 0;
               const nuevoStock = stockActual + cantidadDevuelta;
-
-              console.log(`Actualizando stock: ${stockActual} + ${cantidadDevuelta} = ${nuevoStock}`);
 
               const resultadoStock = await (supabase as any)
                 .from('productos')
@@ -396,12 +401,10 @@ export default function VentasPage() {
 
               if (resultadoStock.error) {
                 console.error('Error actualizando stock:', resultadoStock.error);
-              } else {
-                console.log('Stock actualizado exitosamente');
               }
             }
           } catch (catchError) {
-            console.log('Error catch en actualización de stock:', catchError);
+            console.error('Error catch en actualización de stock:', catchError);
           }
         }
       }

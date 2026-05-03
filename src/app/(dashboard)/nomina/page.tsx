@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { registrarLog } from '@/lib/audit';
 
 // Componente Badge inline
 const Badge = ({ className = '', variant = 'default', ...props }: React.HTMLAttributes<HTMLDivElement> & { variant?: 'default' | 'secondary' | 'destructive' | 'outline' }) => {
@@ -294,6 +295,28 @@ export default function NominaPage() {
 
       const nomina = data.nomina;
       const empresa = data.empresa;
+
+      // Registrar log de auditoría
+      await registrarLog(createClient(), {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'PAGAR_NOMINA',
+        modulo: 'NOMINAS',
+        detalles: {
+          nomina_id: nomina.id,
+          empleado_id: empleadoSeleccionado,
+          empleado_nombre: datosConfirmacion.empleado,
+          periodo_tipo: periodoTipo,
+          periodo_inicio: fechaInicio,
+          periodo_fin: fechaFin,
+          sueldo_base: sueldoBase,
+          total_comisiones: totalComisiones,
+          total_pagar: totalPagar,
+          comisiones_pagadas: comisionesIds.length,
+          pagado_por: user?.id,
+          fecha_pago: new Date().toISOString()
+        }
+      });
 
       // 2. Navegar a página de impresión
       window.location.href = `/nomina/imprimir/${nomina.id}`;

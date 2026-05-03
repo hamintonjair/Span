@@ -1,23 +1,35 @@
 'use client';
 
+// Forzar renderizado dinámico para depuración (desactivar caché)
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { getDirectDriveUrl } from '@/utils/drive-url';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { registrarLog } from '@/lib/audit';
+import { exportarSistemaMaestroAction, restaurarDesdeBDAction, eliminarRespaldoAction } from '@/app/actions/admin';
+import { actualizarEmpresaAction } from '@/app/actions/empresa';
 import { BuildingOfficeIcon, PhoneIcon, MapPinIcon, DocumentTextIcon, PhotoIcon, CheckCircleIcon, ExclamationTriangleIcon, CreditCardIcon, CalendarIcon, LockClosedIcon, CloudArrowDownIcon, CloudArrowUpIcon, DocumentArrowDownIcon, TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 // Eliminamos interfaces para evitar errores de TypeScript
 
 export default function ConfiguracionPage() {
+  // Verificación de entorno - URL de Supabase local
+  console.log("URL de Supabase local:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  
   const { user } = useJWTAuth();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [empresa, setEmpresa] = useState<any>(null);
+  const [plan, setPlan] = useState<any>(null);
+  const [configGlobal, setConfigGlobal] = useState<any>(null);
   const [formData, setFormData] = useState<any>({
     nombre: '',
     nit: '',
@@ -60,7 +72,6 @@ export default function ConfiguracionPage() {
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [restoreMessage, setRestoreMessage] = useState<string>('');
   const [currentTable, setCurrentTable] = useState<string>('');
-  const [frecuenciaRespaldo, setFrecuenciaRespaldo] = useState<string>('Desactivado');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Validar y procesar archivo de logo
@@ -110,14 +121,45 @@ export default function ConfiguracionPage() {
 
   // Cargar datos de la empresa usando empresa_id del usuario
   const cargarEmpresa = async () => {
-    if (!user?.empresa_id) return;
+    if (!user?.empresa_id) {
+      console.error('No hay empresa_id en el usuario');
+      return;
+    }
 
     try {
       setLoading(true);
-      // Cargar datos de la empresa incluyendo frecuencia_respaldo
+      
+      // Cargar datos de la empresa con join a planes
       const { data, error } = await supabase
         .from('empresas')
-        .select('id, nombre, nit, telefono, direccion, ciudad, mensaje_ticket, logo_url, frecuencia_respaldo')
+        .select(`
+          id, 
+          nombre, 
+          nit, 
+          telefono, 
+          direccion, 
+          ciudad, 
+          mensaje_ticket, 
+          logo_url, 
+          frecuencia_respaldo,
+          fecha_vencimiento,
+          creado_en,
+          actualizado_en,
+          planes (
+            id,
+            nombre,
+            descripcion,
+            precio,
+            tiene_analytics,
+            tiene_inventario,
+            tiene_comisiones,
+            tiene_marketing,
+            tiene_nominas,
+            max_usuarios,
+            max_empleados,
+            soporte_prioritario
+          )
+        `)
         .eq('id', user.empresa_id)
         .single();
 
@@ -127,10 +169,17 @@ export default function ConfiguracionPage() {
         // Cast explícito para evitar errores de TypeScript
         const empresaData = data as any;
         setEmpresa(empresaData);
-        // Cargar frecuencia de respaldo si existe
-        if (empresaData.frecuencia_respaldo) {
-          setFrecuenciaRespaldo(empresaData.frecuencia_respaldo);
+        
+        // Guardar datos del plan si existe con manejo robusto
+        if (empresaData.planes) {
+          setPlan(empresaData.planes);
+        } else if (empresaData.plan) {
+          // Fallback por si devuelve como objeto único en lugar de array
+          setPlan(empresaData.plan);
+        } else {
+          setPlan(null);
         }
+        
         setFormData({
           nombre: empresaData.nombre || '',
           nit: empresaData.nit || '',
@@ -158,7 +207,29 @@ export default function ConfiguracionPage() {
     if (user?.empresa_id) {
       cargarEmpresa();
     }
+    fetchConfigGlobal();
   }, [user?.empresa_id]);
+
+  const fetchConfigGlobal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('configuracion_global')
+        .select('titular')
+        .single();
+
+      if (error) {
+        console.error('Error cargando configuración global:', error);
+      } else {
+        setConfigGlobal(data);
+      }
+    } catch (error) {
+      console.error('Error general cargando configuración global:', error);
+    }
+  };
+
+  const getNombreEmpresa = () => {
+    return configGlobal?.titular;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -168,43 +239,84 @@ export default function ConfiguracionPage() {
     })); // Cast explícito para evitar errores de TypeScript
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleUpdateIdentity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.empresa_id) {
-      setMessage({ type: 'error', text: 'Usuario no autenticado' });
+    
+    // Validar autenticación
+    if (!user?.id || !user?.empresa_id) {
+      setMessage({ type: 'error', text: 'Usuario no autenticado o sin empresa asignada' });
+      return;
+    }
+
+    // Validar rol - Solo admin_empresa puede actualizar
+    if (user?.rol !== 'admin_empresa') {
+      setMessage({ type: 'error', text: 'No tienes permisos para actualizar la configuración de la empresa' });
       return;
     }
 
     setSaving(true);
+    setMessage(null); // Limpiar mensaje anterior
+
     try {
-      // Crear objeto de actualización por separado
-      const updateData: any = {
-        nombre: formData.nombre,
-        nit: formData.nit,
-        telefono: formData.telefono,
-        direccion: formData.direccion,
-        ciudad: formData.ciudad,
-        mensaje_ticket: formData.mensaje_ticket,
-        logo_url: formData.logo_url
+      // Preparar datos de actualización con validación segura contra nulos
+      const updateData = {
+        nombre: (formData.nombre || '').trim(),
+        nit: (formData.nit || '').trim(),
+        telefono: (formData.telefono || '').trim(),
+        direccion: (formData.direccion || '').trim(),
+        ciudad: (formData.ciudad || '').trim(),
+        mensaje_ticket: (formData.mensaje_ticket || '').trim(),
+        logo_url: formData.logo_url || null,
       };
+
+      // Usar Server Action con service_role_key (ignora RLS)
+      const result = await actualizarEmpresaAction(user.empresa_id, updateData, user.id);
+
+      if (!result.success) {
+        console.error('Server Action - Error:', result.error);
+        throw new Error(result.error || 'Error al actualizar la empresa');
+      }
+
+      // Registrar log de auditoría con el cliente normal
+      try {
+        await registrarLog(supabase, {
+          empresa_id: user.empresa_id,
+          usuario_id: user.id,
+          accion: 'ACTUALIZAR_CONFIGURACION',
+          modulo: 'CONFIGURACION',
+          detalles: {
+            empresa_id: user.empresa_id,
+            campos_actualizados: Object.keys(updateData),
+            nombre_empresa: formData.nombre,
+            nit: formData.nit,
+            telefono: formData.telefono,
+            direccion: formData.direccion,
+            ciudad: formData.ciudad,
+            tiene_logo: !!formData.logo_url,
+            actualizado_por: user.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
+      } catch (logError) {
+        console.warn('Error registrando log de auditoría:', logError);
+        // No fallar si el log falla
+      }
+
+      // Mostrar mensaje de éxito
+      setMessage({ type: 'success', text: 'Configuración actualizada exitosamente' });
       
-      const { error } = await supabase
-        .from('empresas')
-        // @ts-ignore - Ignorar error de TypeScript para este llamado
-        .update(updateData as any)
-        .eq('id', user.empresa_id);
-
-      if (error) throw error;
-
-      setMessage({ type: 'success', text: 'Configuración guardada exitosamente' });
-      await cargarEmpresa(); // Recargar datos
+      // Recargar datos actualizados
+      await cargarEmpresa();
       
       // Limpiar mensaje después de 3 segundos
       setTimeout(() => setMessage(null), 3000);
       
     } catch (error) {
       console.error('Error guardando configuración:', error);
-      setMessage({ type: 'error', text: 'Error al guardar la configuración' });
+      setMessage({ 
+        type: 'error', 
+        text: (error as any)?.message || 'Error al guardar la configuración' 
+      });
     } finally {
       setSaving(false);
     }
@@ -212,6 +324,9 @@ export default function ConfiguracionPage() {
 
   // Cargar respaldos existentes
   const cargarBackups = async () => {
+    // Anulación absoluta de caché para evitar datos obsoletos
+    noStore();
+    
     if (!user?.empresa_id) return;
     
     setLoadingBackups(true);
@@ -387,35 +502,6 @@ export default function ConfiguracionPage() {
     setFileRestoreModal({ isOpen: false, backupData: null, fileName: '' });
   };
 
-  // Función para guardar frecuencia de respaldo
-  const handleGuardarFrecuencia = async (frecuencia: string) => {
-    if (!user?.empresa_id) return;
-
-    try {
-      const { error } = await (supabase.from('empresas') as any)
-        .update({ frecuencia_respaldo: frecuencia })
-        .eq('id', user.empresa_id);
-
-      if (error) throw error;
-
-      setFrecuenciaRespaldo(frecuencia);
-      setToast({
-        show: true,
-        message: 'Configuración guardada',
-        type: 'success'
-      });
-      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
-    } catch (error) {
-      console.error('Error guardando frecuencia de respaldo:', error);
-      setToast({
-        show: true,
-        message: 'Error al guardar la configuración',
-        type: 'error'
-      });
-      setTimeout(() => setToast({ show: false, message: '', type: 'error' }), 3000);
-    }
-  };
-
   // Función para descargar respaldo
   const handleDownloadBackup = (backup: any) => {
     const datosJson = JSON.stringify(backup.datos, null, 2);
@@ -522,7 +608,7 @@ export default function ConfiguracionPage() {
 
         // Limpiar fechas para que Supabase las genere automáticamente
         delete cleaned.created_at;
-        delete cleaned.updated_at;
+        delete cleaned.actualizado_en;
 
         return cleaned;
       });
@@ -551,9 +637,6 @@ export default function ConfiguracionPage() {
 
         // Aplicar mapeo de nombre de tabla si es necesario
         const actualTableName = tableMapping[tableName] || tableName;
-
-        // Log de control antes del upsert
-        console.log(`Datos a enviar a ${actualTableName} (original: ${tableName}):`, cleanedData);
 
         // Usar upsert para cada tabla con el nombre correcto
         const { error } = await (supabase.from(actualTableName) as any)
@@ -593,14 +676,7 @@ export default function ConfiguracionPage() {
       await processTable(tableName);
     }
 
-    // Log final de control
-    console.log(`Procesamiento completado.`);
-    console.log(`Tablas procesadas exitosamente: ${processedTableNames.size} de ${allTableNames.length}`);
-    console.log('Tablas procesadas:', Array.from(processedTableNames));
-    if (failedTables.size > 0) {
-      console.warn('Tablas con errores:', Array.from(failedTables));
-    }
-
+    
     // Restauración completada - refrescar página
     const messageBase = failedTables.size > 0
       ? `Restauración completada con ${failedTables.size} error(es). ${processedTableNames.size} tablas restauradas.`
@@ -627,11 +703,17 @@ export default function ConfiguracionPage() {
     if (!deleteModal.backup) return;
 
     try {
-      const { error } = await (supabase.from('respaldos_datos') as any)
-        .delete()
-        .eq('id', deleteModal.backup.id);
+      // 🔴 FRONTEND: Rastreo de depuración
+      console.log('🔴 FRONTEND: Iniciando eliminación para el ID:', deleteModal.backup.id, 'y Archivo:', deleteModal.backup.nombre_archivo);
+      
+      const result = await eliminarRespaldoAction(
+        deleteModal.backup.id,
+        deleteModal.backup.nombre_archivo
+      );
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Error al eliminar respaldo');
+      }
 
       // Mostrar toast de éxito
       setToast({
@@ -653,7 +735,7 @@ export default function ConfiguracionPage() {
       // Mostrar toast de error
       setToast({
         show: true,
-        message: 'Error al eliminar el respaldo. Intente nuevamente.',
+        message: error instanceof Error ? error.message : 'Error al eliminar el respaldo. Intente nuevamente.',
         type: 'error'
       });
       
@@ -695,7 +777,7 @@ export default function ConfiguracionPage() {
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircleIcon className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-4">¡Bienvenido a BeautyPro!</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">¡Bienvenido a {getNombreEmpresa()}!</h2>
                 <p className="text-amber-100 mb-6 max-w-2xl mx-auto">
                   Completa los siguientes pasos para configurar tu salón y empezar a usar el sistema
                 </p>
@@ -815,7 +897,7 @@ export default function ConfiguracionPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <form id="empresa-form" onSubmit={handleSubmit} className="space-y-6">
+              <form id="empresa-form" onSubmit={handleUpdateIdentity} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Nombre de la Empresa */}
                   <div>
@@ -828,7 +910,7 @@ export default function ConfiguracionPage() {
                       value={formData.nombre}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="BeautyPro"
+                      placeholder={getNombreEmpresa()}
                       required
                     />
                   </div>
@@ -994,58 +1076,111 @@ export default function ConfiguracionPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Plan Actual */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Plan Actual
-                  </label>
-                  <div className="relative">
-                    <CreditCardIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value="Plan Profesional"
-                      disabled
-                      readOnly
-                      className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
+              {plan ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Plan Actual */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Plan Actual
+                      </label>
+                      <div className="relative">
+                        <CreditCardIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={plan.nombre || 'Sin plan'}
+                          disabled
+                          readOnly
+                          className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
 
-                {/* Fecha de Inicio */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Inicio
-                  </label>
-                  <div className="relative">
-                    <CalendarIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value="01/01/2024"
-                      disabled
-                      readOnly
-                      className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
+                    {/* Fecha de Inicio */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fecha de Inicio
+                      </label>
+                      <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={empresa.creado_en ? new Date(empresa.creado_en).toLocaleDateString('es-CO') : 'N/A'}
+                          disabled
+                          readOnly
+                          className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
 
-                {/* Fecha de Vencimiento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Vencimiento
-                  </label>
-                  <div className="relative">
-                    <CalendarIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value="31/12/2024"
-                      disabled
-                      readOnly
-                      className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
-                    />
+                    {/* Fecha de Vencimiento */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fecha de Vencimiento
+                      </label>
+                      <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={empresa.fecha_vencimiento ? new Date(empresa.fecha_vencimiento).toLocaleDateString('es-CO') : 'N/A'}
+                          disabled
+                          readOnly
+                          className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Beneficios del Plan */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">Características del Plan</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {plan.tiene_analytics && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Analytics</span>
+                        </div>
+                      )}
+                      {plan.tiene_inventario && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Inventario</span>
+                        </div>
+                      )}
+                      {plan.tiene_marketing && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Marketing</span>
+                        </div>
+                      )}
+                      {plan.max_usuarios && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Múltiples Usuarios ({plan.max_usuarios})</span>
+                        </div>
+                      )}
+                      {plan.tiene_comisiones && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Comisiones</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Descripción del Plan */}
+                  {plan.descripcion && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-2">Descripción del Plan</h4>
+                      <p className="text-sm text-blue-700">{plan.descripcion}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No se encontró información del plan</p>
                 </div>
-              </div>
+              )}
 
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center gap-2">
@@ -1196,23 +1331,6 @@ export default function ConfiguracionPage() {
               onChange={handleRestoreBackup}
               className="hidden"
             />
-
-            {/* Selector de frecuencia de respaldo automático */}
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
-                Programar respaldo automático
-              </label>
-              <select
-                value={frecuenciaRespaldo}
-                onChange={(e) => handleGuardarFrecuencia(e.target.value)}
-                className="w-full px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              >
-                <option value="Desactivado">Desactivado</option>
-                <option value="Semanal">Semanal</option>
-                <option value="Quincenal">Quincenal</option>
-                <option value="Mensual">Mensual</option>
-              </select>
-            </div>
 
             {/* Nota informativa sobre almacenamiento */}
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">

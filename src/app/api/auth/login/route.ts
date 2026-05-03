@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { signJWT, setJWTCookie, JWTPayload } from '@/lib/jwt';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { registrarLog } from '@/lib/audit';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +62,23 @@ export async function POST(request: NextRequest) {
     // Generar JWT
     const token = await signJWT(payload);
 
+    // Registrar log de auditoría para login exitoso
+    await registrarLog(createAdminClient(), {
+      empresa_id: (user as any).empresa_id || undefined,
+      usuario_id: (user as any).id,
+      accion: 'LOGIN',
+      modulo: 'AUTH',
+      detalles: {
+        usuario_id: (user as any).id,
+        usuario_email: (user as any).email,
+        usuario_nombre: (user as any).nombre,
+        usuario_rol: (user as any).rol,
+        empresa_id: (user as any).empresa_id,
+        login_fecha: new Date().toISOString(),
+        login_ip: request.headers.get('x-forwarded-for') || 'unknown'
+      }
+    });
+
     // Crear respuesta y establecer cookie
     const response = NextResponse.json({
       success: true,
@@ -75,6 +94,9 @@ export async function POST(request: NextRequest) {
 
     // Establecer cookie HttpOnly
     setJWTCookie(response, token);
+
+    // Limpiar caché para asegurar que toda la aplicación detecte la nueva sesión
+    revalidatePath('/', 'layout');
 
     return response;
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { registrarLogAdmin } from '@/lib/auditAdmin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,15 +14,20 @@ export async function GET(request: NextRequest) {
         nombre,
         estado,
         plan_id,
-        limite_empleados,
         creado_en,
         actualizado_en,
+        nit,
+        telefono,
+        direccion,
+        ciudad,
+        mensaje_ticket,
+        logo_url,
         planes!inner (
           id,
           nombre,
           precio,
-          limite_usuarios,
-          limite_sucursales
+          max_usuarios,
+          max_empleados
         )
       `)
       .order('creado_en', { ascending: false });
@@ -78,6 +84,8 @@ export async function GET(request: NextRequest) {
           ...empresa,
           plan_nombre: (empresa.planes as any)?.nombre,
           plan_precio: (empresa.planes as any)?.precio,
+          plan_max_usuarios: (empresa.planes as any)?.max_usuarios,
+          plan_max_empleados: (empresa.planes as any)?.max_empleados,
           total_empleados: countError ? 0 : count || 0,
           suscripciones: suscripcionesUnicas || [],
           planes: undefined // Eliminamos el objeto anidado para limpiar la respuesta
@@ -101,11 +109,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { nombre, plan_id, limite_empleados } = await request.json();
+    const { nombre, plan_id, adminId } = await request.json();
 
-    if (!nombre || !plan_id || !limite_empleados) {
+    if (!nombre || !plan_id) {
       return NextResponse.json(
-        { error: 'Nombre, plan_id y limite_empleados son requeridos' },
+        { error: 'Nombre y plan_id son requeridos' },
         { status: 400 }
       );
     }
@@ -126,14 +134,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calcular fecha de vencimiento (15 días desde hoy - periodo de prueba)
+    const fechaVencimiento = new Date();
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 15);
+
     // Crear empresa
     const { data: nuevaEmpresa, error } = await supabase
       .from('empresas')
       .insert({
         nombre,
         plan_id,
-        limite_empleados,
         estado: 'activo',
+        estado_suscripcion: 'activa',
+        fecha_vencimiento: fechaVencimiento.toISOString(),
         creado_en: new Date().toISOString(),
         actualizado_en: new Date().toISOString()
       })
@@ -142,15 +155,14 @@ export async function POST(request: NextRequest) {
         nombre,
         estado,
         plan_id,
-        limite_empleados,
         creado_en,
         actualizado_en,
         planes (
           id,
           nombre,
           precio,
-          limite_usuarios,
-          limite_sucursales
+          max_usuarios,
+          max_empleados
         )
       `)
       .single();
@@ -163,24 +175,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Registrar en logs
-    await supabase
-      .from('logs_actividad')
-      .insert({
-        usuario_id: 'admin-global-temp', // TODO: Obtener del JWT
-        empresa_id: nuevaEmpresa.id,
-        accion: 'CREACION',
-        modulo: 'EMPRESAS',
-        descripcion: `Creación de empresa "${nombre}" con plan "${plan.nombre}"`,
-        datos_nuevos: { nombre, plan_id, limite_empleados, estado: 'activo' },
-        ip_address: request.ip || 'unknown',
-        user_agent: request.headers.get('user-agent') || 'unknown'
+    // Registrar log de auditoría global
+    try {
+      await registrarLogAdmin({
+        usuario_id: adminId || null,
+        accion: 'CREAR_EMPRESA_API',
+        modulo: 'Empresas',
+        detalles: {
+          empresa_id: nuevaEmpresa.id,
+          nombre_empresa: nombre,
+          plan_seleccionado: plan.nombre
+        }
       });
+    } catch (e) {
+      console.error('Error silencioso en auditoría global (Crear Empresa API):', e);
+    }
 
     const empresaFormateada = {
       ...nuevaEmpresa,
       plan_nombre: (nuevaEmpresa.planes as any)?.nombre,
       plan_precio: (nuevaEmpresa.planes as any)?.precio,
+      plan_max_usuarios: (nuevaEmpresa.planes as any)?.max_usuarios,
+      plan_max_empleados: (nuevaEmpresa.planes as any)?.max_empleados,
       total_empleados: 0,
       planes: undefined
     };

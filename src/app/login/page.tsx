@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { requestPasswordReset } from '@/services/email.service';
+import { useJWTAuth } from '@/hooks/use-jwt-auth';
+import { showToast } from '@/components/ui/toast';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useJWTAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -16,10 +21,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  
-  const router = useRouter();
+  const [titular, setTitular] = useState('');
+
+  useEffect(() => {
+    const fetchTitular = async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('configuracion_global')
+          .select('titular')
+          .single() as any;
+        
+        if (data && data.titular) {
+          setTitular(data.titular);
+        }
+      } catch (error) {
+        console.error('Error al cargar titular:', error);
+      }
+    };
+
+    fetchTitular();
+  }, []);
+
   const searchParams = useSearchParams();
-  const { login } = useJWTAuth();
   const redirect = searchParams.get('redirect') || '/dashboard';
 
   // Mostrar mensaje de suspensión si viene del middleware
@@ -47,10 +71,17 @@ export default function LoginPage() {
       console.log('Respuesta de login JWT:', result);
       
       if (result.success) {
-        console.log('Login exitoso, verificando estado de empresa...');
+        console.log('Login exitoso, verificando rol y estado...');
         
-        // Para usuarios no admin_global, verificar estado de empresa antes de redirigir
-        if (result.user && result.user.rol !== 'admin_global' && result.user.empresa_id) {
+        // Redirigir según el rol del usuario
+        if (result.user?.rol === 'admin_global' || result.user?.rol === 'soporte' || result.user?.rol === 'ventas') {
+          console.log('Rol administrativo detectado, redirigiendo a dashboard admin...');
+          window.location.href = '/admin/dashboard-admin';
+          return;
+        }
+        
+        // Para usuarios con empresa, verificar estado antes de redirigir
+        if (result.user && result.user.empresa_id) {
           try {
             const response = await fetch(`/api/empresas/${result.user.empresa_id}`);
             if (response.ok) {
@@ -68,10 +99,15 @@ export default function LoginPage() {
           } catch (error) {
             console.error('Error verificando estado de empresa:', error);
           }
+          
+          console.log('Usuario con empresa, redirigiendo a dashboard empresa...');
+          window.location.href = '/dashboard-empresa';
+          return;
         }
         
-        console.log('Redirigiendo a dashboard...');
-        window.location.href = '/dashboard';
+        // Usuario sin empresa asignada
+        console.log('Usuario sin empresa, redirigiendo a configuración...');
+        window.location.href = '/configuracion-empresa';
       } else {
         console.error('Error de autenticación:', result.error);
         setError('Credenciales inválidas: ' + result.error);
@@ -94,7 +130,7 @@ export default function LoginPage() {
       const result = await requestPasswordReset(formData.email);
       
       if (result.success) {
-        alert('Se ha enviado un enlace de restablecimiento a tu correo');
+        showToast('Se ha enviado un enlace de restablecimiento a tu correo', 'success');
         setShowForgotPassword(false);
       } else {
         setError(result.error || 'Error al enviar correo de recuperación');
@@ -112,7 +148,7 @@ export default function LoginPage() {
         <Card>
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-amber-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-white font-bold text-2xl">BP</span>
+              <span className="text-white font-bold text-2xl">{titular.substring(0, 2).toUpperCase()}</span>
             </div>
             <h1 className="text-2xl font-bold text-amber-500 mb-2">
               {showForgotPassword ? 'Recuperar Contraseña' : 'Iniciar Sesión'}
@@ -120,7 +156,7 @@ export default function LoginPage() {
             <p className="text-amber-500">
               {showForgotPassword 
                 ? 'Te enviaremos un enlace para restablecer tu contraseña'
-                : 'Bienvenido de nuevo a BeautyPro'
+                : `Bienvenido de nuevo a ${titular}`
               }
             </p>
           </CardHeader>
@@ -188,28 +224,21 @@ export default function LoginPage() {
             )}
 
             <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForgotPassword(!showForgotPassword);
-                  setError('');
-                }}
-                className="text-amber-600 hover:text-amber-700 text-sm"
+              <Link
+                href="/forgot-password"
+                className="text-amber-600 hover:text-amber-700 text-sm font-medium"
               >
-                {showForgotPassword 
-                  ? 'Volver al inicio de sesión'
-                  : '¿Olvidaste tu contraseña?'
-                }
-              </button>
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
             {!showForgotPassword && (
               <div className="mt-4 text-center">
                 <p className="text-sm text-gray-600">
-                  ¿No tienes una cuenta? 
-                  <a href="/register" className="text-amber-600 hover:text-amber-700 ml-1">
-                    Regístrate
-                  </a>
+                  ¿Aún no tienes un salón? 
+                  <Link href="/registro" className="text-amber-600 hover:text-amber-700 ml-1 font-medium">
+                    Regístrate ahora
+                  </Link>
                 </p>
               </div>
             )}

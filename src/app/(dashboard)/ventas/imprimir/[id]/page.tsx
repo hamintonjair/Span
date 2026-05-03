@@ -33,8 +33,6 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
     // Simple alert para este componente de impresión
     if (type === 'error') {
       console.error('❌', message);
-    } else {
-      console.log('✅', message);
     }
   };
 
@@ -96,9 +94,6 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
       if (empresaError) throw empresaError;
 
       if (ventaData && empresaData) {
-        console.log('🏢 Datos de empresa crudos:', empresaData);
-        console.log('🖼️ Logo URL crudo:', (empresaData as any).logo_url);
-        
         // @ts-ignore - Ignorar errores de TypeScript para datos de empresa
         // Procesar URL del logo
         const processedEmpresa: any = {
@@ -118,16 +113,12 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
           logo_url: (empresaData as any).logo_url // No procesar aquí, procesar en render
         };
 
-        console.log('🖼️ Logo URL en processedEmpresa:', processedEmpresa.logo_url || 'NO LOGO');
-        console.log('🏢 Empresa procesada:', processedEmpresa);
-
         setVenta(ventaData);
         setEmpresa(processedEmpresa);
       }
     } catch (error: any) {
       // Manejar específicamente AbortError
       if (error.name === 'AbortError' || error.message.includes('aborted')) {
-        console.log('🚫 Petición abortada - ignorando error');
         return;
       }
       
@@ -466,7 +457,6 @@ export default function ImprimirTicketPage({ params }: { params: { id: string } 
       alt="Logo" 
       className="mx-auto h-auto max-h-[80px] w-auto object-contain mb-2"
       onError={() => {
-        console.log("Error cargando logo Base64, activando fallback de texto");
         setHasLogoError(true);
       }}
     />

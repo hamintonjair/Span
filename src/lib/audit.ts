@@ -1,4 +1,5 @@
 import { createClient } from './supabase/client';
+import * as XLSX from 'xlsx';
 
 // Tipos de acciones para la auditoría
 export type TipoAccion = 
@@ -28,23 +29,63 @@ export type TipoAccion =
   | 'CERRAR_CAJA'
   | 'GENERAR_NOMINA'
   | 'PAGAR_NOMINA'
+  | 'CREAR_PROVEEDOR'
+  | 'ACTUALIZAR_PROVEEDOR'
+  | 'ELIMINAR_PROVEEDOR'
+  | 'REGISTRAR_GASTO'
+  | 'REGISTRAR_INGRESO'
+  | 'CREAR_PRESTAMO'
+  | 'PAGAR_CUOTA'
+  | 'CREAR_USUARIO'
+  | 'ACTUALIZAR_USUARIO'
+  | 'ELIMINAR_USUARIO'
+  | 'ACTUALIZAR_CONFIGURACION'
   | 'CREAR_RESPALDO'
   | 'RESTAURAR_RESPALDO'
-  | 'ELIMINAR_RESPALDO';
+  | 'ELIMINAR_RESPALDO'
+  | 'CREAR_TICKET'
+  | 'ACTUALIZAR_TICKET'
+  | 'ELIMINAR_TICKET'
+  | 'CREAR_CAMPANA'
+  | 'ACTUALIZAR_CAMPANA'
+  | 'ELIMINAR_CAMPANA'
+  | 'EXPORTAR_REPORTE'
+  | 'CREAR_CATEGORIA'
+  | 'ACTUALIZAR_CATEGORIA'
+  | 'ELIMINAR_CATEGORIA'
+  | 'CREAR_INVENTARIO'
+  | 'ACTUALIZAR_INVENTARIO'
+  | 'ELIMINAR_INVENTARIO'
+  | 'CREAR_SUSCRIPCION'
+  | 'ACTUALIZAR_SUSCRIPCION'
+  | 'ELIMINAR_SUSCRIPCION'
+  | 'PAGAR_COMISION'
+  | 'ELIMINAR_COMISION';
 
 // Tipos de módulos
 export type ModuloSistema = 
   | 'AUTH'
   | 'VENTAS'
   | 'INVENTARIO'
-  | 'USUARIOS'
+  | 'CAJA'
   | 'CITAS'
+  | 'CLIENTES'
+  | 'EMPLEADOS'
   | 'FINANZAS'
   | 'NOMINAS'
+  | 'PRESTAMOS'
+  | 'PRODUCTOS'
+  | 'PROVEEDORES'
+  | 'SERVICIOS'
+  | 'USUARIOS'
   | 'CONFIGURACION'
   | 'SOPORTE'
   | 'MARKETING'
-  | 'ANALYTICS';
+  | 'ANALYTICS'
+  | 'CATEGORIAS'
+  | 'INVENTARIO'
+  | 'SUSCRIPCIONES'
+  | 'COMISIONES';
 
 // Interfaz para los datos del log
 export interface LogAuditoria {
@@ -54,7 +95,15 @@ export interface LogAuditoria {
   accion: TipoAccion;
   modulo: ModuloSistema;
   detalles?: Record<string, any>;
-  created_at?: string;
+  metadata?: Record<string, any>;
+  creado_en?: string;
+  ip_address?: string;
+  usuario_nombre?: string;
+  usuario_email?: string;
+  usuarios_sistema?: {
+    nombre?: string;
+    email?: string;
+  };
 }
 
 // Colores por tipo de acción
@@ -178,6 +227,19 @@ export const registrarLog = async (
   datos: LogAuditoria
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    // Capturar IP address del cliente
+    let ipAddress = 'Desconocida';
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      if (response.ok) {
+        const data = await response.json();
+        ipAddress = data.ip || 'Desconocida';
+      }
+    } catch (ipError) {
+      console.warn('No se pudo obtener la IP del cliente:', ipError);
+      // Continuar con 'Desconocida' si falla la API
+    }
+
     const { error } = await supabase
       .from('logs_actividad')
       .insert({
@@ -186,7 +248,7 @@ export const registrarLog = async (
         accion: datos.accion,
         modulo: datos.modulo,
         detalles: datos.detalles || {},
-        created_at: new Date().toISOString()
+        ip_address: ipAddress,
       });
 
     if (error) {
@@ -217,6 +279,7 @@ export const obtenerLogs = async (
     fechaFin?: string;
     limite?: number;
     offset?: number;
+    empresa_id?: string;
   }
 ): Promise<{ data: LogAuditoria[]; error?: string }> => {
   try {
@@ -229,11 +292,20 @@ export const obtenerLogs = async (
         accion,
         modulo,
         detalles,
-        created_at
+        creado_en,
+        ip_address,
+        usuarios_sistema (
+          nombre,
+          email
+        )
       `)
-      .order('created_at', { ascending: false });
+      .order('creado_en', { ascending: false });
 
     // Aplicar filtros
+    if (filtros.empresa_id) {
+      query = query.eq('empresa_id', filtros.empresa_id);
+    }
+
     if (filtros.busqueda) {
       query = query.or(
         `id.ilike.%${filtros.busqueda}%,accion.ilike.%${filtros.busqueda}%,usuario_id.ilike.%${filtros.busqueda}%`
@@ -280,39 +352,41 @@ export const obtenerLogs = async (
   }
 };
 
-// Función para exportar logs a CSV
-export const exportarLogsCSV = (logs: LogAuditoria[]): string => {
-  const headers = [
-    'Fecha/Hora',
-    'Acción',
-    'Módulo',
-    'ID Empresa',
-    'ID Usuario',
-    'Detalles'
+// Función para exportar logs a CSV (Optimizada para Excel en Español)
+export const exportarLogsExcel = (logs: LogAuditoria[]) => {
+  // 1. Preparamos los datos
+  const data = logs.map(log => ({
+    'Fecha/Hora': log.creado_en ? new Date(log.creado_en).toLocaleString('es-CO') : 'N/A',
+    'Acción': log.accion || '',
+    'Módulo': log.modulo || '',
+    'ID Empresa': log.empresa_id || 'N/A',
+    'ID Usuario': log.usuario_id || 'Sistema',
+    'Detalles': log.detalles ? JSON.stringify(log.detalles) : 'Sin detalles'
+  }));
+
+  // 2. Creamos la hoja de cálculo
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Auditoría");
+
+  // 3. AUTO-AJUSTE DE COLUMNAS (¡La magia ocurre aquí!)
+  const colWidths = [
+    { wch: 22 }, // Fecha/Hora (Ancho de 22 caracteres)
+    { wch: 18 }, // Acción
+    { wch: 15 }, // Módulo
+    { wch: 38 }, // ID Empresa
+    { wch: 38 }, // ID Usuario
+    { wch: 100 } // Detalles (Súper ancho para que quepa el JSON)
   ];
+  ws['!cols'] = colWidths;
 
-  const rows = logs.map(log => [
-    new Date(log.created_at || '').toLocaleString('es-CO'),
-    log.accion,
-    log.modulo,
-    log.empresa_id || 'N/A',
-    log.usuario_id || 'N/A',
-    JSON.stringify(log.detalles || {})
-  ]);
-
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(row => 
-      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-    )
-  ].join('\n');
-
-  return csvContent;
+  // 4. Descargamos el archivo .xlsx
+  XLSX.writeFile(wb, `logs_auditoria_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
-
-// Utilidad para descargar archivo CSV
+// Utilidad para descargar archivo CSV con soporte para Acentos (BOM)
 export const descargarCSV = (csvContent: string, filename: string = 'logs_auditoria') => {
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // El '\uFEFF' es un truco (BOM) para que Excel reconozca los acentos y eñes
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   
@@ -323,6 +397,4 @@ export const descargarCSV = (csvContent: string, filename: string = 'logs_audito
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
-  URL.revokeObjectURL(url);
 };

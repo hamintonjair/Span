@@ -16,6 +16,14 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 
+// Función para formatear números con separadores de miles
+const formatearNumero = (numero: number): string => {
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(numero);
+};
+
 interface Plan {
   id: string;
   nombre: string;
@@ -28,8 +36,8 @@ interface Plan {
   tiene_nominas?: boolean;
   tiene_analytics?: boolean;
   soporte_prioritario?: boolean;
-  limite_usuarios?: number;
-  limite_sucursales?: number;
+  max_usuarios?: number;
+  max_empleados?: number;
   popular?: boolean;
 }
 
@@ -85,7 +93,7 @@ export default function SuscripcionPage() {
     }
 
     if (user && user.rol === 'admin_global') {
-      router.push('/admin-dashboard');
+      router.push('/admin/dashboard-admin');
       return;
     }
 
@@ -215,7 +223,6 @@ export default function SuscripcionPage() {
 
       if (error) throw error;
       
-      console.log('Planes cargados:', data); // Debug
       setPlanes(data || []);
     } catch (error) {
       console.error('Error cargando planes:', error);
@@ -359,7 +366,7 @@ export default function SuscripcionPage() {
                               </div>
                               <div className="flex items-center text-sm">
                                 <span className="font-medium text-gray-600 mr-2">Precio:</span>
-                                <span className="text-gray-900">${planActual.precio}/mes</span>
+                                <span className="text-gray-900">${formatearNumero(planActual.precio)}/mes</span>
                               </div>
                               <div className="flex items-center text-sm">
                                 <span className="font-medium text-gray-600 mr-2">Descripción:</span>
@@ -389,7 +396,7 @@ export default function SuscripcionPage() {
                               <div className="flex items-center text-sm">
                                 <span className="text-blue-500 mr-2">👥</span>
                                 <span className="text-blue-700 font-medium">
-                                  Límite de Usuarios: {planActual.limite_usuarios}
+                                  Límite de Usuarios: {planActual.max_usuarios}
                                 </span>
                               </div>
                               
@@ -397,7 +404,7 @@ export default function SuscripcionPage() {
                               <div className="flex items-center text-sm">
                                 <span className="text-purple-500 mr-2">🏢</span>
                                 <span className="text-purple-700 font-medium">
-                                  Límite de Sucursales: {planActual.limite_sucursales}
+                                  Límite de Empleados: {planActual.max_empleados}
                                 </span>
                               </div>
                             </div>
@@ -432,7 +439,6 @@ export default function SuscripcionPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Planes Disponibles</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {planes.map((plan) => {
-              console.log('Renderizando plan:', plan); // Debug por cada plan
               return (
               <Card key={plan.id} className={plan.popular ? 'ring-2 ring-blue-500' : ''}>
                 <CardHeader>
@@ -445,7 +451,7 @@ export default function SuscripcionPage() {
                   )}
                   <h3 className="text-lg font-semibold text-center text-gray-900">{plan.nombre}</h3>
                   <p className="text-3xl font-bold text-center text-gray-900">
-                    ${plan.precio}
+                    ${formatearNumero(plan.precio)}
                     <span className="text-lg font-medium text-gray-500">/mes</span>
                   </p>
                 </CardHeader>
@@ -486,7 +492,7 @@ export default function SuscripcionPage() {
                         <div className="flex items-center text-sm ml-4">
                           <span className="text-blue-500 mr-2">👥</span>
                           <span className="text-blue-700 font-medium">
-                            Límite de Usuarios: {plan.limite_usuarios}
+                            Límite de Usuarios: {plan.max_usuarios}
                           </span>
                         </div>
                         
@@ -494,7 +500,7 @@ export default function SuscripcionPage() {
                         <div className="flex items-center text-sm ml-4">
                           <span className="text-purple-500 mr-2">🏢</span>
                           <span className="text-purple-700 font-medium">
-                            Límite de Sucursales: {plan.limite_sucursales}
+                            Límite de Empleados: {plan.max_empleados}
                           </span>
                         </div>
                       </div>
@@ -578,7 +584,7 @@ export default function SuscripcionPage() {
                 
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="font-medium text-gray-900">
-                    {selectedPlan.nombre} - ${selectedPlan.precio}/mes
+                    {selectedPlan.nombre} - ${formatearNumero(selectedPlan.precio)}/mes
                   </p>
                   <p className="text-sm text-gray-600">
                     {selectedPlan.descripcion}
@@ -593,7 +599,7 @@ export default function SuscripcionPage() {
                   {getPlanDiferencias(selectedPlan)!.precio !== 0 && (
                     <p className={`text-sm ${getPlanDiferencias(selectedPlan)!.precio > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {getPlanDiferencias(selectedPlan)!.precio > 0 ? '+' : ''}
-                      ${getPlanDiferencias(selectedPlan)!.precio}/mes
+                      ${formatearNumero(getPlanDiferencias(selectedPlan)!.precio)}/mes
                     </p>
                   )}
                   

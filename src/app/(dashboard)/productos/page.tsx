@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
+import { registrarLog } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { 
@@ -238,6 +239,25 @@ export default function ProductosPage() {
           return;
         }
         showToast('Producto actualizado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ACTUALIZAR_PRODUCTO',
+          modulo: 'PRODUCTOS',
+          detalles: {
+            producto_id: editingProducto.id,
+            nombre_anterior: editingProducto.nombre,
+            nombre_nuevo: formData.nombre,
+            precio_anterior: editingProducto.precio_venta,
+            precio_nuevo: parseFloat(formData.precio_venta) || 0,
+            stock_anterior: editingProducto.stock,
+            stock_nuevo: parseInt(formData.stock) || 0,
+            actualizado_por: user?.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
       } else {
         const productoData = {
           nombre: formData.nombre,
@@ -253,13 +273,29 @@ export default function ProductosPage() {
           empresa_id: user?.empresa_id,
           created_at: new Date().toISOString()
         };
-        const { error } = await (supabase as any).from('productos').insert(productoData);
+        const { data, error } = await (supabase as any).from('productos').insert(productoData).select('id').single();
         if (error) {
           console.error('Error creando producto:', error);
           showToast('Error creando producto', 'error');
           return;
         }
         showToast('Producto creado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CREAR_PRODUCTO',
+          modulo: 'PRODUCTOS',
+          detalles: {
+            producto_id: (data as any)?.id,
+            nombre: formData.nombre,
+            precio_venta: parseFloat(formData.precio_venta) || 0,
+            stock: parseInt(formData.stock) || 0,
+            creado_por: user?.id,
+            fecha_creacion: new Date().toISOString()
+          }
+        });
       }
       setShowModal(false);
       setEditingProducto(null);
@@ -322,6 +358,20 @@ export default function ProductosPage() {
         return;
       }
       showToast('Producto eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_PRODUCTO',
+        modulo: 'PRODUCTOS',
+        detalles: {
+          producto_id: productoToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadProductos();
     } catch (error) {
       console.error('Error inesperado:', error);

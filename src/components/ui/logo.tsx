@@ -1,8 +1,5 @@
 'use client';
 
-import Image from 'next/image';
-import { useState } from 'react';
-
 interface LogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -10,8 +7,6 @@ interface LogoProps {
 }
 
 export function Logo({ className = '', size = 'md', variant = 'default' }: LogoProps) {
-  const [imageError, setImageError] = useState(false);
-  
   const sizeClasses = {
     sm: 'h-8 w-8',
     md: 'h-10 w-10',
@@ -24,23 +19,29 @@ export function Logo({ className = '', size = 'md', variant = 'default' }: LogoP
     white: 'text-white'
   };
 
+  const svgSize = {
+    sm: 32,
+    md: 40,
+    lg: 48,
+    xl: 64
+  };
+
   return (
     <div className={`${sizeClasses[size]} ${variantClasses[variant]} ${className} flex items-center justify-center`}>
-      {!imageError ? (
-        <Image
-          src="/logo.svg"
-          alt="BeautyPro Logo"
-          width={size === 'sm' ? 32 : size === 'md' ? 40 : size === 'lg' ? 48 : 64}
-          height={size === 'sm' ? 32 : size === 'md' ? 40 : size === 'lg' ? 48 : 64}
-          className="object-contain"
-          onError={() => setImageError(true)}
-          priority
-        />
-      ) : (
-        <div className="font-bold text-xl">
-          BP
-        </div>
-      )}
+      <svg 
+        width={svgSize[size]} 
+        height={svgSize[size]} 
+        viewBox="0 0 32 32" 
+        fill="none" 
+        xmlns="http://www.w3.org/2000/svg"
+        className="object-contain"
+      >
+        <circle cx="16" cy="16" r="16" fill="#1f2937"/>
+        <text x="8" y="20" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="white">AS</text>
+        <rect x="20" y="14" width="8" height="1" fill="#3b82f6"/>
+        <rect x="20" y="17" width="6" height="1" fill="#3b82f6"/>
+        <rect x="20" y="20" width="4" height="1" fill="#3b82f6"/>
+      </svg>
     </div>
   );
 }

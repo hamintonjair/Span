@@ -5,8 +5,22 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
+import { registrarLog } from '@/lib/audit';
+import { enviarReporteCierreAction } from '@/app/actions/email-cierre';
 import { History, Eye, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  BanknotesIcon,
+  CurrencyDollarIcon,
+  ShoppingBagIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  BuildingOfficeIcon,
+  UserGroupIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
 
 export default function CajaPage() {
   const router = useRouter();
@@ -127,8 +141,6 @@ export default function CajaPage() {
   // Función para obtener ingresos del turno (ventas + préstamos)
   const obtenerIngresosTurno = async (cajaId: string) => {
     try {
-      console.log('Calculando ingresos desde tabla ventas para caja_id:', cajaId);
-      
       // Obtener información de la caja para obtener fecha_apertura
       const { data: cajaData, error: cajaError } = await supabase
         .from('cajas')
@@ -141,11 +153,8 @@ export default function CajaPage() {
         return { ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 };
       }
       
-      console.log('Información de caja:', cajaData);
-      
       // Convertir fecha de apertura a formato ISO para asegurar comparación correcta
       const fechaAperturaISO = new Date(cajaData.fecha_apertura).toISOString();
-      console.log('Fecha apertura ISO:', fechaAperturaISO);
       
       // 1. Consultar ventas
       const { data: ventasData, error: ventasError } = await supabase
@@ -161,8 +170,6 @@ export default function CajaPage() {
         return { ingresosPOS: 0, ingresosCitas: 0, recaudoPrestamos: 0, recaudoTransferencias: 0, egresosPrestamos: 0, totalGeneral: 0 };
       }
       
-      console.log('Ventas encontradas:', ventasData?.length || 0);
-      
       // Clasificar ventas: POS vs Citas
       const ventasPOS = ventasData?.filter((venta: any) => !venta.cita_id) || [];
       const ventasCitas = ventasData?.filter((venta: any) => venta.cita_id) || [];
@@ -172,9 +179,6 @@ export default function CajaPage() {
       const totalVentasCitas = ventasCitas.reduce((sum: number, venta: any) => sum + (venta.total || 0), 0);
       
       // 2. Consultar recaudo de préstamos desde movimientos_caja (usando metodo_pago explícito)
-      console.log('Buscando recaudo de préstamos para caja_id:', cajaId);
-      console.log('Categoría exacta: "Abono Préstamo"');
-      console.log('Filtrando por metodo_pago = "efectivo" (columna explícita)');
       
       // Consulta para abonos en efectivo
       const { data: movimientosEfectivo, error: efectivoError } = await supabase
@@ -218,14 +222,7 @@ export default function CajaPage() {
     
       }
       
-      console.log('TOTALES FINALES:');
-      console.log('Efectivo:', totalRecaudoPrestamos);
-      console.log('Transferencia:', totalRecaudoTransferencias);
-
       // 3. Consultar egresos por préstamos desde movimientos_caja
-      console.log('Buscando egresos de préstamos para caja_id:', cajaId);
-      console.log('Fecha apertura ISO:', fechaAperturaISO);
-      console.log('Categoría exacta: "Préstamo Entregado"');
       
       const { data: egresosData, error: egresosError } = await supabase
         .from('movimientos_caja')
@@ -236,31 +233,15 @@ export default function CajaPage() {
         .eq('tipo', 'salida')
         .gte('fecha', fechaAperturaISO) as any;
       
-      console.log('Egresos encontrados:', egresosData);
-      console.log('Error egresos:', egresosError);
-      
       let totalEgresosPrestamos = 0;
       if (egresosError) {
         console.warn('Error obteniendo egresos de préstamos:', egresosError);
       } else {
         totalEgresosPrestamos = egresosData?.reduce((sum: number, movimiento: any) => sum + (movimiento.monto || 0), 0) || 0;
-        console.log('Egresos de préstamos encontrados:', totalEgresosPrestamos);
       }
       
       // Calcular total general (ingresos - egresos)
       const totalGeneral = totalVentasPOS + totalVentasCitas + totalRecaudoPrestamos + totalRecaudoTransferencias - totalEgresosPrestamos;
-      
-      console.log('Desglose de ingresos completo:', {
-        totalVentas: ventasData?.length || 0,
-        ventasPOS: ventasPOS.length,
-        ventasCitas: ventasCitas.length,
-        totalVentasPOS,
-        totalVentasCitas,
-        totalRecaudoPrestamos,
-        totalRecaudoTransferencias,
-        totalEgresosPrestamos,
-        totalGeneral
-      });
       
       return {
         ingresosPOS: totalVentasPOS,
@@ -280,7 +261,6 @@ export default function CajaPage() {
   // Función para obtener ventas detalladas del turno
   const obtenerVentasDetalladasTurno = async (cajaId: string) => {
     try {
-      console.log('Obteniendo ventas detalladas para caja_id:', cajaId);
       
       // Obtener información de la caja para obtener fecha_apertura
       const { data: cajaData, error: cajaError } = await supabase
@@ -294,7 +274,6 @@ export default function CajaPage() {
         return [];
       }
       
-      console.log('Información de caja:', cajaData);
       
       // Convertir fecha de apertura a formato ISO para asegurar comparación correcta
       const fechaAperturaISO = new Date(cajaData.fecha_apertura).toISOString();
@@ -329,8 +308,6 @@ export default function CajaPage() {
         return [];
       }
       
-      console.log('Ventas detalladas encontradas:', ventasData?.length || 0);
-      
       return ventasData || [];
       
     } catch (error) {
@@ -340,7 +317,6 @@ export default function CajaPage() {
   };
   const obtenerComisionesTurno = async (cajaId: string) => {
     try {
-      console.log('Obteniendo comisiones para caja_id:', cajaId);
       
       // Obtener información de la caja para obtener fecha_apertura
       const { data: cajaData, error: cajaError } = await supabase
@@ -403,7 +379,6 @@ export default function CajaPage() {
   };
   const obtenerCitasTurno = async (cajaId: string) => {
     try {
-      console.log('🔍 Obteniendo citas para caja_id:', cajaId);
       
       // Primero, vamos a explorar qué columnas tiene la tabla citas sin filtro
       const { data: columnasData, error: columnasError } = await supabase
@@ -411,7 +386,6 @@ export default function CajaPage() {
         .select('*')
         .limit(1);
 
-      console.log('🔍 Exploración de columnas citas:', { columnasData, columnasError });
 
       if (columnasError) {
         console.error('❌ Error explorando citas:', columnasError);
@@ -744,6 +718,20 @@ export default function CajaPage() {
 
       // Éxito - mostrar toast y redirigir
       showToast('success', '¡Jornada iniciada! Ya puede realizar ventas.');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ABRIR_CAJA',
+        modulo: 'CAJA',
+        detalles: {
+          monto_inicial: parseFloat(montoApertura),
+          vendedor_id: user?.id,
+          fecha_apertura: new Date().toISOString()
+        }
+      });
+      
       setMontoApertura('');
       buscarCajaActual();
       redirectToPOS();
@@ -774,10 +762,6 @@ export default function CajaPage() {
       const efectivoEsperado = calcularEfectivoEsperado();
       const montoCierreNum = parseFloat(efectivoReal) || 0;
       
-      console.log('🔍 Cerrando caja con ID:', cajaActual.id);
-      console.log('💰 Efectivo Real:', montoCierreNum);
-      console.log('� Efectivo Esperado:', efectivoEsperado);
-      console.log('📊 Diferencia:', montoCierreNum - efectivoEsperado);
       
       // Usar RPC administrativo con SERVICE ROLE para bypass completo de RLS
       console.log('🚀 Usando RPC administrativo para cerrar caja...');
@@ -790,11 +774,75 @@ export default function CajaPage() {
         p_cerrado_por: user?.id
       });
       
-      console.log('📦 Resultado del RPC administrativo:', { error });
       
       // Lógica de Éxito: Si !error, considera que la caja se cerró
       if (!error) {
         console.log('✅ Éxito real - RPC administrativo funcionó');
+        
+        // Calcular diferencia
+        const diferencia = montoCierreNum - efectivoEsperado;
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CERRAR_CAJA',
+          modulo: 'CAJA',
+          detalles: {
+            caja_id: cajaActual.id,
+            monto_final: montoCierreNum,
+            monto_esperado: efectivoEsperado,
+            diferencia: diferencia,
+            fecha_cierre: new Date().toISOString(),
+            cerrado_por: user?.id
+          }
+        });
+
+        // Obtener email de la empresa y enviar reporte de cierre
+        try {
+          console.log('📧 Obteniendo email de la empresa para enviar reporte...');
+          
+          // Obtener email de la empresa
+          const { data: empresaData } = await (supabase.from('empresas') as any)
+            .select('nombre, nit')
+            .eq('id', user?.empresa_id)
+            .single();
+
+          if (empresaData) {
+            // Construir objeto datosCierre con los estados actuales
+            const datosCierre = {
+              cajeroNombre: user?.nombre || 'Usuario',
+              fechaApertura: cajaActual.fecha_apertura,
+              fechaCierre: new Date().toISOString(),
+              montoInicial: parseFloat(cajaActual.monto_inicial) || 0,
+              ventasAcumuladas: Number(ventasAcumuladas) || 0,
+              montoEsperado: efectivoEsperado,
+              efectivoReal: montoCierreNum,
+              diferencia: diferencia,
+              cajaId: cajaActual.id
+            };
+
+            // Email de destino (usar el email del usuario que cierra la caja)
+            const correoEmpresa = user?.email || 'admin@beautypro.com';
+
+            console.log('📊 Enviando reporte de cierre en segundo plano:', {
+              cajero: datosCierre.cajeroNombre,
+              empresa: empresaData.nombre,
+              correo: correoEmpresa,
+              diferencia: datosCierre.diferencia
+            });
+
+            // Llamar a enviarReporteCierreAction SIN await para procesamiento en segundo plano
+            enviarReporteCierreAction(datosCierre, correoEmpresa).catch(error => {
+              console.error('❌ Error en envío de correo de cierre (segundo plano):', error);
+            });
+          } else {
+            console.warn('⚠️ No se pudo obtener información de la empresa para enviar correo');
+          }
+        } catch (emailError) {
+          console.error('❌ Error preparando envío de correo de cierre:', emailError);
+          // No fallar el cierre si el correo falla
+        }
         
         // Llama a buscarCajaActual() para refrescar la vista
         console.log('🔄 Refrescando estado de caja...');
@@ -812,10 +860,7 @@ export default function CajaPage() {
         
         console.log('✅ Caja cerrada exitosamente en la base de datos');
       } else {
-        console.error('❌ Error en RPC administrativo:', error);
-        console.error('❌ Código de error:', error.code);
-        console.error('❌ Mensaje:', error.message);
-        console.error('❌ Detalles:', error.details);
+  
         throw new Error(`RPC falló: ${error.message}`);
       }
 
@@ -863,9 +908,7 @@ export default function CajaPage() {
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
           <div className="flex items-center space-x-3 mb-6">
             <div className="p-3 bg-blue-100 rounded-lg">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <BanknotesIcon width={24} height={24} className="text-blue-600" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Estado de Caja</h2>
@@ -879,9 +922,7 @@ export default function CajaPage() {
                         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
                             <div className="flex items-center space-x-2 mb-4">
                                 <div className="p-2 bg-green-100 rounded-lg">
-                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                                    <CheckCircle width={20} height={20} className="text-green-600" />
                                 </div>
                                 <h3 className="text-xl font-semibold text-green-800">Caja Abierta</h3>
                             </div>
@@ -910,9 +951,7 @@ export default function CajaPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
                                         <div className="flex items-center space-x-2 mb-1">
-                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                            </svg>
+                                            <ShoppingBagIcon width={16} height={16} className="text-green-600" />
                                             <span className="text-xs font-medium text-green-700">POS</span>
                                         </div>
                                         <p className="text-lg font-bold text-green-800">{formatMoney(ingresosTurno.ingresosPOS)}</p>
@@ -920,9 +959,7 @@ export default function CajaPage() {
                                     </div>
                                     <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
                                         <div className="flex items-center space-x-2 mb-1">
-                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
+                                            <CalendarIcon width={16} height={16} className="text-blue-600" />
                                             <span className="text-xs font-medium text-blue-700">Citas</span>
                                         </div>
                                         <p className="text-lg font-bold text-blue-800">{formatMoney(ingresosTurno.ingresosCitas)}</p>
@@ -930,9 +967,7 @@ export default function CajaPage() {
                                     </div>
                                     <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg p-3 border border-amber-200">
                                         <div className="flex items-center space-x-2 mb-1">
-                                            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
+                                            <CurrencyDollarIcon width={16} height={16} className="text-amber-600" />
                                             <span className="text-xs font-medium text-amber-700">Recaudo Préstamos</span>
                                         </div>
                                         <p className="text-lg font-bold text-amber-800">{formatMoney(ingresosTurno.recaudoPrestamos)}</p>
@@ -941,9 +976,7 @@ export default function CajaPage() {
                                     {ingresosTurno.recaudoTransferencias > 0 && (
                                         <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
                                             <div className="flex items-center space-x-2 mb-1">
-                                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                                                </svg>
+                                                <BuildingOfficeIcon width={16} height={16} className="text-purple-600" />
                                                 <span className="text-xs font-medium text-purple-700">Abonos en Banco</span>
                                             </div>
                                             <p className="text-lg font-bold text-purple-800">{formatMoney(ingresosTurno.recaudoTransferencias)}</p>
@@ -952,9 +985,7 @@ export default function CajaPage() {
                                     )}
                                     <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
                                         <div className="flex items-center space-x-2 mb-1">
-                                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M12 14h.01M15 11h.01M12 14h.01M9 17h.01M12 14h.01" />
-                                            </svg>
+                                            <ArrowTrendingUpIcon width={16} height={16} className="text-purple-600" />
                                             <span className="text-xs font-medium text-purple-700">Total Ventas</span>
                                         </div>
                                         <p className="text-lg font-bold text-purple-800">{formatMoney(ingresosTurno.ingresosPOS + ingresosTurno.ingresosCitas)}</p>
@@ -962,9 +993,7 @@ export default function CajaPage() {
                                     </div>
                                     <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-3 border border-red-200">
                                         <div className="flex items-center space-x-2 mb-1">
-                                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
-                                            </svg>
+                                            <ArrowTrendingDownIcon width={16} height={16} className="text-red-600" />
                                             <span className="text-xs font-medium text-red-700">Egresos Préstamos</span>
                                         </div>
                                         <p className="text-lg font-bold text-red-800">{formatMoney(ingresosTurno.egresosPrestamos || 0)}</p>
@@ -1047,8 +1076,8 @@ export default function CajaPage() {
             </div>
         </div>
 
-        {/* Sección de Historial de Cierres */}
-        {historialCierres.length > 0 && (
+        {/* Sección de Historial de Cierres - Ocultar para estilistas */}
+        {historialCierres.length > 0 && user?.rol !== 'estilista' && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 mt-8">
                 <div className="flex items-center space-x-3 mb-4">
                     <div className="p-3 bg-purple-100 rounded-lg">

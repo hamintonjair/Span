@@ -63,16 +63,7 @@ export const usePlanPermissions = (): PlanPermissions => {
         const planNombre = planData?.nombre || empresaData.plan_nombre || 'Cargando...';
         const planPrecio = planData?.precio || empresaData.plan_precio || 0;
 
-        // DEBUG: Log para depurar permisos
-        console.log('DEBUG - Plan Data:', {
-          planNombre,
-          planPrecio,
-          soporte_prioritario: planData?.soporte_prioritario,
-          tiene_inventario: planData?.tiene_inventario,
-          tiene_comisiones: planData?.tiene_comisiones,
-          tiene_marketing: planData?.tiene_marketing,
-          tiene_analytics: planData?.tiene_analytics
-        });
+      
 
         // Usar campos booleanos directamente de la BD
         // Esto hace el sistema completamente dinámico e independiente de precios
@@ -88,7 +79,6 @@ export const usePlanPermissions = (): PlanPermissions => {
           loading: false
         };
 
-        console.log('DEBUG - Permisos finales:', permissions);
         setPermissions(permissions);
 
       } catch (error) {

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { createClient } from '@/lib/supabase-client';
+import { actualizarMensajeGlobalAction } from '@/app/actions/admin';
 
 interface ConfiguracionGlobal {
   id: string;
@@ -86,19 +87,18 @@ export default function ComunicacionPage() {
   };
 
   const guardarMensaje = async () => {
-    if (!configuracion) return;
+    if (!user?.id) {
+      console.error('Error: No se pudo identificar al administrador');
+      return;
+    }
 
     setGuardando(true);
     try {
-      const { error } = await supabase
-        .from('configuracion_global')
-        .update({
-          mensaje_global: mensaje,
-          actualizado_en: new Date().toISOString()
-        })
-        .eq('id', configuracion.id);
+      const result = await actualizarMensajeGlobalAction(mensaje, user.id);
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Error al actualizar el mensaje global');
+      }
 
       // Mostrar toast de éxito
       const toast = document.createElement('div');
@@ -110,16 +110,16 @@ export default function ComunicacionPage() {
         <span>✅ Mensaje global actualizado</span>
       `;
       document.body.appendChild(toast);
-      
+
       setTimeout(() => {
         document.body.removeChild(toast);
       }, 3000);
 
       await cargarConfiguracion();
-      
+
     } catch (error) {
       console.error('Error guardando mensaje:', error);
-      
+
       const toast = document.createElement('div');
       toast.className = 'fixed top-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
       toast.innerHTML = `

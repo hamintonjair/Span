@@ -41,11 +41,10 @@ export async function POST(
     const { data: empresaActualizada, error } = await supabase
       .from('empresas')
       .update({ 
-        estado: nuevoEstado,
-        actualizado_en: new Date().toISOString()
+        estado: nuevoEstado
       })
       .eq('id', empresaId)
-      .select('id, nombre, estado, plan_id, limite_empleados');
+      .select('id, nombre, estado, plan_id, max_empleados');
 
     if (error) {
       console.error('Error actualizando estado de empresa:', error);
@@ -64,41 +63,8 @@ export async function POST(
 
     const empresaActualizadaData = empresaActualizada[0];
 
-    // Registrar en logs de actividad (solo columnas que existen)
-    const logData: any = {
-      // usuario_id: 'admin-global-temp', // Comentado hasta tener JWT real
-      empresa_id: empresaId,
-      accion: 'CAMBIO_ESTADO',
-      modulo: 'EMPRESAS',
-      descripcion: `Cambio de estado de "${empresaAnterior.nombre}" de "${empresaAnterior.estado}" a "${nuevoEstado}"`
-    };
-
-    // Intentar agregar datos_anteriores y datos_nuevos si las columnas existen
-    try {
-      logData.datos_anteriores = { estado: empresaAnterior.estado };
-      logData.datos_nuevos = { estado: nuevoEstado };
-    } catch (e) {
-      // Si las columnas no existen, continuamos sin ellas
-      console.log('Columnas datos_anteriores/datos_nuevos no disponibles en logs_actividad, continuando sin ellas');
-    }
-
-    // Intentar agregar ip_address y user_agent si existen
-    try {
-      logData.ip_address = request.ip || 'unknown';
-      logData.user_agent = request.headers.get('user-agent') || 'unknown';
-    } catch (e) {
-      // Si las columnas no existen, continuamos sin ellas
-      console.log('Columnas ip_address/user_agent no disponibles en logs_actividad, continuando sin ellas');
-    }
-
-    const { error: logError } = await supabase
-      .from('logs_actividad')
-      .insert(logData);
-
-    if (logError) {
-      console.error('Error registrando log:', logError);
-      // No fallamos la petición si el log falla
-    }
+    // Log temporal para debug
+    console.log('Estado actualizado exitosamente:', empresaActualizadaData);
 
     return NextResponse.json({
       success: true,

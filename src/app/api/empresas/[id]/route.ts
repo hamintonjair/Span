@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { registrarLogAdmin } from '@/lib/auditAdmin';
+import bcrypt from 'bcryptjs';
+import { revalidatePath } from 'next/cache';
 
 export async function PUT(
   request: NextRequest,
@@ -12,7 +15,7 @@ export async function PUT(
     console.log('ID recibido:', empresaId);
     console.log('Tipo de ID:', typeof empresaId);
     
-    const { nombre, plan_id, limite_empleados } = await request.json();
+    const { nombre, telefono, ciudad, nombre_dueño, email_dueño, password, adminId } = await request.json();
 
     // Validaciones básicas
     if (!nombre || !nombre.trim()) {
@@ -22,26 +25,12 @@ export async function PUT(
       );
     }
 
-    if (!plan_id) {
-      return NextResponse.json(
-        { error: 'El plan es requerido' },
-        { status: 400 }
-      );
-    }
-
-    if (!limite_empleados || limite_empleados < 1) {
-      return NextResponse.json(
-        { error: 'El límite de empleados debe ser mayor a 0' },
-        { status: 400 }
-      );
-    }
-
     const supabase = createAdminClient();
 
     // Verificar que la empresa existe
     const { data: empresaExistente, error: errorExistente } = await supabase
       .from('empresas')
-      .select('id, nombre, plan_id, limite_empleados')
+      .select('id, nombre, telefono, ciudad')
       .eq('id', empresaId)
       .single();
 
@@ -52,31 +41,24 @@ export async function PUT(
       );
     }
 
-    // Verificar que el plan existe
-    const { data: plan, error: planError } = await supabase
-      .from('planes')
-      .select('id, nombre, precio')
-      .eq('id', plan_id)
-      .single();
+    // Actualizar empresa
+    const updateData: any = {
+      nombre: nombre.trim()
+    };
 
-    if (planError || !plan) {
-      return NextResponse.json(
-        { error: 'Plan no encontrado' },
-        { status: 404 }
-      );
+    if (telefono !== undefined) {
+      updateData.telefono = telefono || null;
     }
 
-    // Actualizar empresa
+    if (ciudad !== undefined) {
+      updateData.ciudad = ciudad || null;
+    }
+
     const { data: empresaActualizada, error } = await supabase
       .from('empresas')
-      .update({ 
-        nombre: nombre.trim(),
-        plan_id,
-        limite_empleados,
-        actualizado_en: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', empresaId)
-      .select('id, nombre, estado, plan_id, limite_empleados, actualizado_en');
+      .select('id, nombre, telefono, ciudad, estado');
 
     if (error) {
       console.error('Error actualizando empresa:', error);
@@ -95,58 +77,64 @@ export async function PUT(
 
     const empresaActualizadaData = empresaActualizada[0];
 
-    // Registrar en logs de actividad (solo columnas que existen)
-    const logData: any = {
-      // usuario_id: 'admin-global-temp', // Comentado hasta tener JWT real
-      empresa_id: empresaId,
-      accion: 'ACTUALIZACION',
-      modulo: 'EMPRESAS',
-      descripcion: `Actualización de empresa: ${empresaActualizadaData.nombre}`
-    };
+    // Actualizar usuario si se proporcionan campos del dueño
+    if (nombre_dueño || email_dueño || password) {
+      const { data: usuario } = await supabase
+        .from('usuarios_sistema')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .eq('rol', 'admin_empresa')
+        .single();
 
-    // Intentar agregar datos_anteriores y datos_nuevos si las columnas existen
-    try {
-      logData.datos_anteriores = { 
-        nombre: empresaExistente.nombre,
-        plan_id: empresaExistente.plan_id,
-        limite_empleados: empresaExistente.limite_empleados
-      };
-      logData.datos_nuevos = { 
-        nombre, 
-        plan_id, 
-        limite_empleados 
-      };
-    } catch (e) {
-      // Si las columnas no existen, continuamos sin ellas
-      console.log('Columnas datos_anteriores/datos_nuevos no disponibles en logs_actividad, continuando sin ellas');
+      if (usuario) {
+        const usuarioUpdateData: any = {};
+        if (nombre_dueño?.trim()) {
+          usuarioUpdateData.nombre = nombre_dueño.trim();
+        }
+        if (email_dueño?.trim()) {
+          usuarioUpdateData.email = email_dueño.trim().toLowerCase();
+        }
+        // Solo actualizar la contraseña si viene un valor válido
+        if (password && password.trim() !== '') {
+          const saltRounds = 10;
+          const hashedPassword = await bcrypt.hash(password, saltRounds);
+          usuarioUpdateData.password_hash = hashedPassword;
+        }
+
+        if (Object.keys(usuarioUpdateData).length > 0) {
+          await supabase
+            .from('usuarios_sistema')
+            .update(usuarioUpdateData)
+            .eq('id', usuario.id);
+        }
+      }
     }
 
-    // Intentar agregar ip_address y user_agent si existen
+    // Registrar log de auditoría global
     try {
-      logData.ip_address = request.ip || 'unknown';
-      logData.user_agent = request.headers.get('user-agent') || 'unknown';
+      await registrarLogAdmin({
+        usuario_id: adminId || null,
+        accion: 'EDITAR_EMPRESA',
+        modulo: 'Empresas',
+        detalles: {
+          empresa_id: empresaId,
+          cambios_solicitados: {
+            nombre,
+            telefono,
+            ciudad,
+            nombre_dueño,
+            email_dueño
+          }
+        }
+      });
     } catch (e) {
-      // Si las columnas no existen, continuamos sin ellas
-      console.log('Columnas ip_address/user_agent no disponibles en logs_actividad, continuando sin ellas');
-    }
-
-    const { error: logError } = await supabase
-      .from('logs_actividad')
-      .insert(logData);
-
-    if (logError) {
-      console.error('Error registrando log:', logError);
-      // No fallamos la petición si el log falla
+      console.error('Error silencioso en auditoría global (Empresas):', e);
     }
 
     return NextResponse.json({
       success: true,
       message: 'Empresa actualizada correctamente',
-      empresa: {
-        ...empresaActualizadaData,
-        plan_nombre: plan.nombre,
-        plan_precio: plan.precio
-      }
+      empresa: empresaActualizadaData
     });
 
   } catch (error) {
@@ -173,16 +161,21 @@ export async function GET(
         nombre,
         estado,
         plan_id,
-        limite_empleados,
         creado_en,
         actualizado_en,
         fecha_vencimiento,
+        nit,
+        telefono,
+        direccion,
+        ciudad,
+        mensaje_ticket,
+        logo_url,
         planes!inner (
           id,
           nombre,
           precio,
-          limite_usuarios,
-          limite_sucursales
+          max_usuarios,
+          max_empleados
         )
       `)
       .eq('id', empresaId);
@@ -209,14 +202,19 @@ export async function GET(
       nombre: empresaData.nombre,
       estado: empresaData.estado,
       plan_id: empresaData.plan_id,
-      limite_empleados: empresaData.limite_empleados,
       creado_en: empresaData.creado_en,
       actualizado_en: empresaData.actualizado_en,
       fecha_vencimiento: empresaData.fecha_vencimiento,
+      nit: empresaData.nit,
+      telefono: empresaData.telefono,
+      direccion: empresaData.direccion,
+      ciudad: empresaData.ciudad,
+      mensaje_ticket: empresaData.mensaje_ticket,
+      logo_url: empresaData.logo_url,
       plan_nombre: (empresaData.planes as any)?.nombre,
       plan_precio: (empresaData.planes as any)?.precio,
-      plan_limite_usuarios: (empresaData.planes as any)?.limite_usuarios,
-      plan_limite_sucursales: (empresaData.planes as any)?.limite_sucursales
+      plan_max_usuarios: (empresaData.planes as any)?.max_usuarios,
+      plan_max_empleados: (empresaData.planes as any)?.max_empleados
     };
 
     return NextResponse.json({

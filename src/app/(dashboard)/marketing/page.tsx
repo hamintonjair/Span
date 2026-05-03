@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase-client';
+import { registrarLog } from '@/lib/audit';
 import { 
   MessageSquare, 
   Send, 
@@ -364,7 +365,6 @@ export default function MarketingPage() {
         
         if (!audienciasValidas.includes(currentCampaign.audiencia)) {
           // No guardar campañas predefinidas con audiencias no válidas
-          console.log('Campaña predefinida no guardada en BD (audiencia no válida):', currentCampaign.audiencia);
           return;
         }
         
@@ -384,6 +384,23 @@ export default function MarketingPage() {
         if (error) throw error;
         
         if (data && data[0]) {
+          // Registrar log de auditoría
+          await registrarLog(supabase, {
+            empresa_id: user?.empresa_id || undefined,
+            usuario_id: user?.id,
+            accion: 'CREAR_CAMPANA',
+            modulo: 'MARKETING',
+            detalles: {
+              campana_id: data[0].id,
+              nombre: campaignData.nombre,
+              mensaje: campaignData.mensaje,
+              audiencia: campaignData.audiencia,
+              estado: campaignData.estado,
+              creado_por: user?.id,
+              fecha_creacion: new Date().toISOString()
+            }
+          });
+          
           setCampaignId(data[0].id);
           setCurrentCampaign(data[0]);
           await loadCampaigns();
@@ -471,6 +488,22 @@ ${mensajeConVariables}`;
         .eq('id', campaignId);
 
       if (error) throw error;
+
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ACTUALIZAR_CAMPANA',
+        modulo: 'MARKETING',
+        detalles: {
+          campana_id: campaignId,
+          cambio_estado: true,
+          estado_anterior: 'enviada',
+          estado_nuevo: 'leida',
+          actualizado_por: user?.id,
+          fecha_actualizacion: new Date().toISOString()
+        }
+      });
 
       // Recargar campañas y KPIs
       await loadCampaigns();

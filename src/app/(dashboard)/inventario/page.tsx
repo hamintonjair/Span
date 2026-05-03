@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { registrarLog } from '@/lib/audit';
 import { 
   MagnifyingGlassIcon, 
   PencilSquareIcon, 
@@ -134,7 +135,6 @@ export default function InventarioPage() {
     
     // Resetear productoSeleccionado para evitar filtros incorrectos
     if (productoSeleccionado) {
-      console.log('Limpiando productoSeleccionado para evitar error 400:', productoSeleccionado);
       setProductoSeleccionado(null);
     }
     
@@ -170,7 +170,6 @@ export default function InventarioPage() {
         };
       });
 
-      console.log('Productos cargados:', productosConProveedores);
       setProductos(productosConProveedores);
       setTotalCount(count || 0);
       setItemOffset(0);
@@ -186,10 +185,6 @@ export default function InventarioPage() {
   const loadMovimientos = async () => {
     if (!user?.empresa_id) return;
     
-    console.log('=== INICIO loadMovimientos ===');
-    console.log('user.empresa_id:', user?.empresa_id);
-    console.log('productoSeleccionado actual:', productoSeleccionado);
-    
     try {
       // Cargar movimientos sin JOIN para evitar errores - consulta más simple
       const { data, error, count } = await supabase
@@ -198,14 +193,9 @@ export default function InventarioPage() {
         .eq('empresa_id', user.empresa_id)
         .order('created_at', { ascending: false });
       
-      console.log('Respuesta movimientos:', { data, error });
-      
       if (!error && data) {
-        console.log('Movimientos cargados, cantidad:', data.length);
-        
         // Cargar productos por separado para mapear - CONSULTA SIMPLE SIN JOIN
         const productoIds = data.map((m: any) => m.producto_id).filter(Boolean);
-        console.log('ProductoIds a buscar:', productoIds);
 
         const { data: productosData, error: productosError } = await supabase
           .from('productos')
@@ -213,20 +203,12 @@ export default function InventarioPage() {
           .eq('empresa_id', user.empresa_id)
           .in('id', productoIds);
 
-        console.log('Consulta productos SIMPLE:', {
-          empresa_id: user.empresa_id,
-          productoIds,
-          error: productosError
-        });
-
         // Cargar proveedores por separado
         const { data: proveedoresData, error: proveedoresError } = await supabase
           .from('proveedores')
           .select('id, nombre')
           .eq('empresa_id', user.empresa_id)
           .eq('estado', 'activo');
-
-        console.log('Proveedores cargados:', { proveedoresData, error: proveedoresError });
 
         if (!productosError && productosData && !proveedoresError && proveedoresData) {
           // Mapear proveedores a productos
@@ -238,17 +220,12 @@ export default function InventarioPage() {
             };
           });
 
-          console.log('Productos con proveedores mapeados:', productosConProveedores);
-
           // Mapear productos a movimientos
           const movimientosConProductos = data.map((movimiento: any) => {
-            console.log('Procesando movimiento:', movimiento);
-            
             const producto = productosConProveedores.find((p: any) => p.id === movimiento.producto_id);
             
             // Validar que el movimiento tenga tipo
             const tipoMovimiento = movimiento.tipo || 'SIN TIPO';
-            console.log('Tipo de movimiento:', tipoMovimiento);
             
             const productoInfo = producto ? {
               id: producto.id || '',
@@ -276,15 +253,12 @@ export default function InventarioPage() {
             };
           });
           
-          console.log('MovimientosConProductos:', movimientosConProductos);
           setMovimientos(movimientosConProductos);
           setTotalMovimientos(count || 0);
         }
       }
     } catch (error) {
       console.error('Error cargando movimientos:', error);
-    } finally {
-      console.log('=== FIN loadMovimientos ===');
     }
   };
 
@@ -389,6 +363,26 @@ export default function InventarioPage() {
       }
       
       showToast('Ajuste de inventario registrado correctamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ACTUALIZAR_INVENTARIO',
+        modulo: 'INVENTARIO',
+        detalles: {
+          producto_id: productoSeleccionado.id,
+          producto_nombre: productoSeleccionado.nombre,
+          tipo_movimiento: movimientoData.tipo_movimiento,
+          cantidad: cantidadAjuste,
+          stock_anterior: productoSeleccionado.stock,
+          stock_nuevo: nuevoStock,
+          motivo: formData.motivo,
+          ajustado_por: user?.id,
+          fecha_ajuste: new Date().toISOString()
+        }
+      });
+      
       setShowAjusteModal(false);
       setProductoSeleccionado(null);
       setFormData({ tipo: 'Entrada', cantidad: '', motivo: '' }); // Reset con valores correctos
@@ -430,6 +424,20 @@ export default function InventarioPage() {
         return;
       }
       showToast('Producto eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_INVENTARIO',
+        modulo: 'INVENTARIO',
+        detalles: {
+          producto_id: productoToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadProductos();
     } catch (error) {
       console.error('Error inesperado:', error);
@@ -462,16 +470,6 @@ export default function InventarioPage() {
   };
 
   useEffect(() => {
-    console.log('Estado actual en useEffect:', {
-      user: user?.empresa_id,
-      authLoading,
-      productoSeleccionado,
-      searchTerm,
-      showAjusteModal,
-      showViewModal,
-      showDeleteModal
-    });
-    
     if (user?.empresa_id && !authLoading) {
       loadProductos();
       loadMovimientos();
