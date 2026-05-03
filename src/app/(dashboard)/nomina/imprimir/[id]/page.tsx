@@ -68,7 +68,7 @@ export default function ImprimirNominaPage({ params }: { params: { id: string } 
       const { data: empleadoData, error: empleadoError } = await supabase
         .from('empleados')
         .select('nombre_completo, cedula, email_empleado, telefono')
-        .eq('id', nominaData.empleado_id) 
+        .eq('id', (nominaData as any).empleado_id) 
         .single();
 
       if (empleadoError) {
@@ -402,7 +402,6 @@ export default function ImprimirNominaPage({ params }: { params: { id: string } 
               alt="Logo" 
               className="mx-auto h-auto max-h-[80px] w-auto object-contain mb-2"
               onError={() => {
-                console.log("Error cargando logo Base64, activando fallback de texto");
                 setHasLogoError(true);
               }}
             />
