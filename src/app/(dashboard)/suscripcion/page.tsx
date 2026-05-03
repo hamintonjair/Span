@@ -36,6 +36,7 @@ interface Plan {
   tiene_nominas?: boolean;
   tiene_analytics?: boolean;
   soporte_prioritario?: boolean;
+  tiene_trial_gratis?: boolean;
   max_usuarios?: number;
   max_empleados?: number;
   popular?: boolean;
@@ -457,6 +458,35 @@ export default function SuscripcionPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 text-center mb-4">{plan.descripcion}</p>
+                  
+                  {/* Prueba Gratuita - Solo mostrar si está activa */}
+                  {plan.tiene_trial_gratis && (() => {
+                    // Verificar si el trial está activo
+                    if (!empresa?.fecha_vencimiento) return null;
+                    
+                    const today = new Date();
+                    const fechaRegistro = new Date(empresa.fecha_vencimiento);
+                    fechaRegistro.setDate(fechaRegistro.getDate() - 15); // Restar 15 días para obtener fecha de inicio del trial
+                    const daysSinceStart = Math.ceil((today.getTime() - fechaRegistro.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    // Mostrar solo si han pasado menos de 15 días desde el registro
+                    if (daysSinceStart >= 0 && daysSinceStart < 15) {
+                      const daysRemaining = 15 - daysSinceStart;
+                      return (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">🎁</span>
+                            <div>
+                              <p className="text-sm font-semibold text-green-800">Prueba Gratuita Activa</p>
+                              <p className="text-xs text-green-600">{daysRemaining} días restantes</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
                   <ul className="space-y-3 mb-6">
                     {/* Información básica del plan */}
                     <div className="space-y-2">

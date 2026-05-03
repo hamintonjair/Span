@@ -76,6 +76,7 @@ export default function LandingPage() {
             tiene_analytics,
             tiene_nominas,
             soporte_prioritario,
+            tiene_trial_gratis,
             descripcion,
             creado_en,
             actualizado_en,
@@ -874,6 +875,13 @@ export default function LandingPage() {
                       <p className="text-sm text-slate-500 mb-4">
                         {plan.descripcion}
                       </p>
+                      
+                      {/* Badge de Prueba Gratuita */}
+                      {plan.tiene_trial_gratis && (
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg z-10 animate-pulse">
+                          🎁 15 Días de Prueba Gratis
+                        </div>
+                      )}
                       <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
                         <p className="text-sm text-indigo-700 font-semibold text-center mb-3">
                           ✨ Suite Completa de {getNombreEmpresa()} Incluida

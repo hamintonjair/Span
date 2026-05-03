@@ -14,6 +14,7 @@ interface Plan {
   max_usuarios: number;
   max_empleados: number;
   descripcion: string;
+  tiene_trial_gratis?: boolean;
 }
 
 export default function SuscripcionExpiradaPage() {
@@ -157,6 +158,19 @@ export default function SuscripcionExpiradaPage() {
                     <span className="text-lg text-gray-500 font-normal">/mes</span>
                   </div>
                   <p className="text-gray-600">{plan.descripcion}</p>
+                  
+                  {/* Prueba Gratuita */}
+                  {plan.tiene_trial_gratis && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-600">🎁</span>
+                        <div>
+                          <p className="text-sm font-semibold text-green-800">Prueba Gratuita</p>
+                          <p className="text-xs text-green-600">15 días sin compromiso</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4 mb-8">

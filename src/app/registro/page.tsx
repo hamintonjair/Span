@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,11 +37,14 @@ interface DatosSalon {
 
 export default function RegistroPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pasoActual, setPasoActual] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [titular, setTitular] = useState('Span'); // Fallback por defecto
+  const [planIdSeleccionado, setPlanIdSeleccionado] = useState<string | null>(null);
+  const [planSeleccionado, setPlanSeleccionado] = useState<any>(null);
   
   // Estados para cada paso
   const [datosDueño, setDatosDueño] = useState<DatosDueño>({
@@ -57,6 +60,38 @@ export default function RegistroPage() {
   });
 
   const progreso = (pasoActual / 3) * 100;
+
+  // Extraer planId y cargar datos del plan desde la URL
+  useEffect(() => {
+    const cargarPlanDesdeURL = async () => {
+      const planId = searchParams.get('plan');
+      if (planId) {
+        setPlanIdSeleccionado(planId);
+        console.log('🎯 Plan preseleccionado desde URL:', planId);
+        
+        // Cargar datos completos del plan
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('planes')
+            .select('*')
+            .eq('id', planId)
+            .single();
+          
+          if (error) {
+            console.error('Error cargando plan desde URL:', error);
+          } else if (data) {
+            setPlanSeleccionado(data);
+            console.log('📋 Plan cargado:', data);
+          }
+        } catch (error) {
+          console.error('Error en cargarPlanDesdeURL:', error);
+        }
+      }
+    };
+    
+    cargarPlanDesdeURL();
+  }, [searchParams]);
 
   // Cargar titular de configuracion_global al montar el componente
   useEffect(() => {
@@ -201,6 +236,13 @@ export default function RegistroPage() {
     return true;
   };
 
+  // Cambiar plan seleccionado
+  const cambiarPlan = (nuevoPlan: any) => {
+    setPlanSeleccionado(nuevoPlan);
+    setPlanIdSeleccionado(nuevoPlan.id);
+    console.log('🔄 Plan cambiado a:', nuevoPlan.nombre);
+  };
+
   // Siguiente paso
   const siguientePaso = async () => {
     if (pasoActual === 1) {
@@ -227,30 +269,67 @@ export default function RegistroPage() {
       
       const supabase = createClient();
       
+      // 0. Verificar si el email ya está registrado
+      const { data: usuarioExistente, error: errorVerificacion } = await supabase
+        .from('usuarios_sistema')
+        .select('id, email, nombre')
+        .eq('email', datosDueño.email.toLowerCase().trim())
+        .single();
+      
+      if (errorVerificacion && errorVerificacion.code !== 'PGRST116') {
+        throw new Error(`Error verificando email: ${errorVerificacion.message}`);
+      }
+      
+      if (usuarioExistente) {
+        throw new Error(`El email "${datosDueño.email}" ya está registrado. Por favor, utiliza otro email o inicia sesión.`);
+      }
+      
       // 1. Encriptar contraseña con bcrypt
       const hashedPassword = await bcrypt.hash(datosDueño.password, 10);
 
-      // 2. Obtener plan básico (asumimos que existe un plan con id 'basico')
-      const { data: planBasico, error: planError } = await supabase
-        .from('planes')
-        .select('id')
-        .eq('nombre', 'Básico')
-        .single();
-
-      if (planError || !planBasico) {
-        throw new Error('No se encontró el plan básico');
+      // 2. Obtener plan seleccionado (usar planId de URL o plan básico por defecto)
+      let planSeleccionado: any;
+      if (planIdSeleccionado) {
+        const { data, error } = await supabase
+          .from('planes')
+          .select('id, tiene_trial_gratis')
+          .eq('id', planIdSeleccionado)
+          .single();
+        
+        if (error || !data) {
+          throw new Error('No se encontró el plan seleccionado');
+        }
+        planSeleccionado = data;
+      } else {
+        // Plan básico por defecto
+        const { data, error } = await supabase
+          .from('planes')
+          .select('id, tiene_trial_gratis')
+          .eq('nombre', 'Básico')
+          .single();
+        
+        if (error || !data) {
+          throw new Error('No se encontró el plan básico');
+        }
+        planSeleccionado = data;
       }
 
-      // Calcular fecha de vencimiento (15 días desde hoy - periodo de prueba)
+      // Calcular fecha de vencimiento según si tiene trial o no
       const fechaVencimiento = new Date();
-      fechaVencimiento.setDate(fechaVencimiento.getDate() + 15);
+      if (planSeleccionado.tiene_trial_gratis) {
+        fechaVencimiento.setDate(fechaVencimiento.getDate() + 15); // 15 días de trial
+        console.log('🎁 Plan con trial gratuito - 15 días de prueba');
+      } else {
+        fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 1); // 1 mes normal
+        console.log('💳 Plan sin trial - 1 mes de suscripción');
+      }
 
       // 3. Crear empresa con campos correctos según estructura real
       const { data: empresaData, error: empresaError } = await supabase
         .from('empresas')
         .insert({
           nombre: datosSalon.nombre,
-          plan_id: (planBasico as any).id,
+          plan_id: (planSeleccionado as any).id,
           estado_suscripcion: 'activa',
           fecha_vencimiento: fechaVencimiento.toISOString()
         } as any)
@@ -485,8 +564,16 @@ export default function RegistroPage() {
               <div className="border-t pt-4">
                 <h3 className="font-semibold text-gray-900 mb-3">Plan</h3>
                 <div className="bg-amber-50 rounded-lg p-3">
-                  <p className="text-amber-900 font-medium">Plan Básico</p>
-                  <p className="text-amber-700 text-sm">Gratis durante el período de prueba (15 días)</p>
+                  <p className="text-amber-900 font-medium">
+                    {planSeleccionado ? `Plan ${planSeleccionado.nombre}` : 'Plan Básico'}
+                  </p>
+                  {planSeleccionado?.tiene_trial_gratis ? (
+                    <p className="text-amber-700 text-sm">Gratis durante el período de prueba (15 días)</p>
+                  ) : (
+                    <p className="text-amber-700 text-sm">
+                      ${planSeleccionado ? (planSeleccionado.precio / 100).toFixed(2) : '0.00'} /mes
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -223,6 +223,7 @@ interface Plan {
   tiene_nominas: boolean;
   tiene_analytics: boolean;
   soporte_prioritario: boolean;
+  tiene_trial_gratis?: boolean;
   creado_en?: string;
   actualizado_en?: string;
 }
@@ -264,6 +265,7 @@ export default function PlansPage() {
     tiene_nominas: false,
     tiene_analytics: false,
     soporte_prioritario: false,
+    tiene_trial_gratis: false,
   });
   const [saving, setSaving] = useState(false);
   const [ivaGlobal, setIvaGlobal] = useState<number>(19); // Valor por defecto
@@ -329,6 +331,7 @@ export default function PlansPage() {
           tiene_nominas,
           tiene_analytics,
           soporte_prioritario,
+          tiene_trial_gratis,
           creado_en,
           actualizado_en
         `)
@@ -353,6 +356,7 @@ export default function PlansPage() {
         tiene_nominas: plan.tiene_nominas || false,
         tiene_analytics: plan.tiene_analytics || false,
         soporte_prioritario: plan.soporte_prioritario || false,
+        tiene_trial_gratis: plan.tiene_trial_gratis || false,
         creado_en: plan.creado_en || null,
         actualizado_en: plan.actualizado_en || null,
       }));
@@ -381,6 +385,7 @@ export default function PlansPage() {
       tiene_nominas: plan.tiene_nominas,
       tiene_analytics: plan.tiene_analytics,
       soporte_prioritario: plan.soporte_prioritario,
+      tiene_trial_gratis: plan.tiene_trial_gratis,
     });
     console.log('🔍 DEBUG: FormData cargado:', {
       nombre: plan.nombre,
@@ -400,6 +405,10 @@ export default function PlansPage() {
     try {
       setSaving(true);
 
+      // Debug específico para verificar el valor de tiene_trial_gratis
+      console.log('🔍 DEBUG: formData.tiene_trial_gratis =', formData.tiene_trial_gratis);
+      console.log('🔍 DEBUG: formData completo =', formData);
+
       const planData = {
         nombre: formData.nombre,
         precio: calcularPrecioConIVA(formData.precio), // Guardar precio con IVA
@@ -412,6 +421,7 @@ export default function PlansPage() {
         tiene_nominas: formData.tiene_nominas,
         tiene_analytics: formData.tiene_analytics,
         soporte_prioritario: formData.soporte_prioritario,
+        tiene_trial_gratis: formData.tiene_trial_gratis,
       };
 
       console.log('🔍 DEBUG: Guardando plan con datos:', {
@@ -440,6 +450,7 @@ export default function PlansPage() {
             tiene_nominas: planData.tiene_nominas,
             tiene_analytics: planData.tiene_analytics,
             soporte_prioritario: planData.soporte_prioritario,
+            tiene_trial_gratis: planData.tiene_trial_gratis,
             creado_en: editingPlan.creado_en,
             actualizado_en: new Date().toISOString()
           };
@@ -465,6 +476,7 @@ export default function PlansPage() {
             tiene_nominas: planData.tiene_nominas,
             tiene_analytics: planData.tiene_analytics,
             soporte_prioritario: planData.soporte_prioritario,
+            tiene_trial_gratis: planData.tiene_trial_gratis,
             creado_en: new Date().toISOString(),
             actualizado_en: new Date().toISOString()
           };
@@ -494,6 +506,7 @@ export default function PlansPage() {
         tiene_nominas: false,
         tiene_analytics: false,
         soporte_prioritario: false,
+        tiene_trial_gratis: false,
       });
     } catch (error) {
       console.error('Error en handleSavePlan:', error);
@@ -517,6 +530,7 @@ export default function PlansPage() {
       tiene_nominas: false,
       tiene_analytics: false,
       soporte_prioritario: false,
+      tiene_trial_gratis: false,
     });
     setIsModalOpen(true);
   };
@@ -622,6 +636,23 @@ export default function PlansPage() {
                   {plan.descripcion && (
                     <p className="text-sm text-gray-600">{plan.descripcion}</p>
                   )}
+                  
+                  {/* Prueba gratuita */}
+                  {(() => {
+                    console.log('🔍 DEBUG UI: Plan', plan.nombre, 'tiene_trial_gratis =', plan.tiene_trial_gratis);
+                    console.log('🔍 DEBUG UI: Tipo de tiene_trial_gratis =', typeof plan.tiene_trial_gratis);
+                    return plan.tiene_trial_gratis && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-600">🎁</span>
+                          <div>
+                            <p className="text-sm font-semibold text-green-800">Prueba Gratuita</p>
+                            <p className="text-xs text-green-600">15 días sin compromiso</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Límites */}
                   <div className="space-y-2">
@@ -873,6 +904,23 @@ export default function PlansPage() {
                       className="scale-110"
                     />
                   </div>
+                </div>
+
+                {/* Prueba Gratuita */}
+                <div className="flex items-center justify-between p-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🎁</span>
+                    <div className="flex-1">
+                      <Label htmlFor="tiene_trial_gratis" className="text-sm font-semibold text-gray-800">Prueba Gratuita</Label>
+                      <p className="text-xs text-gray-600 mt-1">15 días sin compromiso</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="tiene_trial_gratis"
+                    checked={formData.tiene_trial_gratis}
+                    onCheckedChange={(checked) => setFormData({ ...formData, tiene_trial_gratis: checked })}
+                    className="scale-110"
+                  />
                 </div>
               </div>
             </div>

@@ -2529,6 +2529,7 @@ export async function crearPlanAction(
     tiene_nominas: boolean;
     tiene_analytics: boolean;
     soporte_prioritario: boolean;
+    tiene_trial_gratis?: boolean;
   },
   adminId: string
 ): Promise<{ success: boolean; error?: string; data?: any }> {
@@ -2549,6 +2550,7 @@ export async function crearPlanAction(
         tiene_nominas: datos.tiene_nominas,
         tiene_analytics: datos.tiene_analytics,
         soporte_prioritario: datos.soporte_prioritario,
+        tiene_trial_gratis: datos.tiene_trial_gratis,
         creado_en: new Date().toISOString(),
         actualizado_en: new Date().toISOString()
       })
@@ -2596,6 +2598,7 @@ export async function editarPlanAction(
     tiene_nominas: boolean;
     tiene_analytics: boolean;
     soporte_prioritario: boolean;
+    tiene_trial_gratis?: boolean;
   },
   adminId: string
 ): Promise<{ success: boolean; error?: string; data?: any }> {
@@ -2614,6 +2617,7 @@ export async function editarPlanAction(
       tiene_nominas: datos.tiene_nominas,
       tiene_analytics: datos.tiene_analytics,
       soporte_prioritario: datos.soporte_prioritario,
+      tiene_trial_gratis: datos.tiene_trial_gratis,
       actualizado_en: new Date().toISOString()
     };
 
