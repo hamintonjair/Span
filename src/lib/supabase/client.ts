@@ -36,9 +36,6 @@ export function createClient() {
             'Content-Type': 'application/json',
           },
         },
-        db: {
-          schema: 'public',
-        },
       }
     )
   }

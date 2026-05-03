@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { DollarSign, TrendingUp, Users, Calendar, Eye, Plus, X, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { registrarLog } from '@/lib/audit';
 
 // Tipos para préstamos - Nombres reales de la tabla
 interface Prestamo {
@@ -374,6 +375,26 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
 
       if (prestamoError) throw prestamoError;
 
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: empresaIdToUse || undefined,
+        usuario_id: user?.id,
+        accion: 'CREAR_PRESTAMO',
+        modulo: 'PRESTAMOS',
+        detalles: {
+          prestamo_id: (prestamoData as any)?.id,
+          empleado_id: empleadoSeleccionado,
+          empleado_nombre: empleadoSeleccionadoData?.nombre || 'Desconocido',
+          monto_total: montoTotal,
+          cuota_mensual: cuotaMensual,
+          plazo_meses: plazoMeses,
+          fecha_prestamo: fechaInicio.toISOString().split('T')[0],
+          fecha_limite: fechaLimite.toISOString().split('T')[0],
+          creado_por: user?.id,
+          fecha_creacion: new Date().toISOString()
+        }
+      });
+
       // Registrar salida de dinero en movimientos_caja (FORZADO)
       if (prestamoData) {
         console.log('Buscando caja abierta para registrar salida...');
@@ -608,6 +629,25 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
         throw new Error('No se pudo actualizar el saldo en la base de datos');
       }
 
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: empresaIdToUse || undefined,
+        usuario_id: user?.id,
+        accion: 'PAGAR_CUOTA',
+        modulo: 'PRESTAMOS',
+        detalles: {
+          prestamo_id: prestamoSeleccionado.id,
+          empleado_id: prestamoSeleccionado.empleado_id,
+          empleado_nombre: prestamoSeleccionado.empleados?.nombre_completo || 'Desconocido',
+          monto_pago: monto_del_abono,
+          metodo_pago: metodoAbono,
+          saldo_anterior: saldo_actual,
+          saldo_nuevo: nuevo_saldo,
+          nuevo_estado: nuevo_estado,
+          pagado_por: user?.id,
+          fecha_pago: new Date().toISOString()
+        }
+      });
 
       await cargarPrestamos();
 

@@ -6,6 +6,7 @@ import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { registrarLog } from '@/lib/audit';
 import { 
   ScissorsIcon, 
   MagnifyingGlassIcon, 
@@ -158,7 +159,6 @@ export default function ServiciosPage() {
     
     try {
       setLoading(true);
-      console.log('Cargando servicios para empresa:', user.empresa_id);
       
       // Query simple para obtener los datos correctamente
       const { data, error, count } = await supabase
@@ -166,8 +166,6 @@ export default function ServiciosPage() {
         .select('*', { count: 'exact' })
         .eq('empresa_id', user.empresa_id)
         .order('created_at', { ascending: false });
-
-      console.log('Respuesta de Supabase (servicios):', { data, error, count });
 
       if (error) {
         console.error('Error cargando servicios:', error);
@@ -201,7 +199,6 @@ export default function ServiciosPage() {
               });
             }
             
-            console.log('Servicios con categorías:', serviciosConCategorias);
             setServicios(serviciosConCategorias);
             setFilteredServicios(serviciosConCategorias);
             setTotalCount(count || 0);
@@ -212,7 +209,6 @@ export default function ServiciosPage() {
       }
 
       // Si no hay servicios o error en categorías, usar datos sin categorías
-      console.log('Usando datos sin categorías:', data);
       setServicios(data || []);
       setFilteredServicios(data || []);
       setTotalCount(count || 0);
@@ -324,6 +320,23 @@ export default function ServiciosPage() {
         }
         
         showToast('Servicio actualizado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'ACTUALIZAR_SERVICIO',
+          modulo: 'SERVICIOS',
+          detalles: {
+            servicio_id: editingServicio.id,
+            nombre_anterior: editingServicio.nombre,
+            nombre_nuevo: formData.nombre,
+            precio_anterior: editingServicio.precio,
+            precio_nuevo: precio,
+            actualizado_por: user?.id,
+            fecha_actualizacion: new Date().toISOString()
+          }
+        });
       } else {
         // Crear nuevo servicio
         const servicioData = {
@@ -338,11 +351,11 @@ export default function ServiciosPage() {
           created_at: new Date().toISOString()
         };
         
-        console.log('Creando servicio:', servicioData);
-        
-        const { error } = await (supabase as any)
+        const { data, error } = await (supabase as any)
           .from('servicios')
-          .insert(servicioData, { head: true });
+          .insert(servicioData)
+          .select('id')
+          .single();
           
         if (error) {
           console.error('Error creando servicio:', error);
@@ -351,6 +364,21 @@ export default function ServiciosPage() {
         }
         
         showToast('Servicio creado correctamente', 'success');
+        
+        // Registrar log de auditoría
+        await registrarLog(supabase, {
+          empresa_id: user?.empresa_id || undefined,
+          usuario_id: user?.id,
+          accion: 'CREAR_SERVICIO',
+          modulo: 'SERVICIOS',
+          detalles: {
+            servicio_id: (data as any)?.id,
+            nombre: formData.nombre,
+            precio: precio,
+            creado_por: user?.id,
+            fecha_creacion: new Date().toISOString()
+          }
+        });
       }
       
       setShowModal(false);
@@ -414,6 +442,20 @@ export default function ServiciosPage() {
       }
       
       showToast('Servicio eliminado exitosamente', 'success');
+      
+      // Registrar log de auditoría
+      await registrarLog(supabase, {
+        empresa_id: user?.empresa_id || undefined,
+        usuario_id: user?.id,
+        accion: 'ELIMINAR_SERVICIO',
+        modulo: 'SERVICIOS',
+        detalles: {
+          servicio_id: servicioToDelete,
+          eliminado_por: user?.id,
+          fecha_eliminacion: new Date().toISOString()
+        }
+      });
+      
       await loadServicios();
     } catch (error) {
       console.error('Error inesperado:', error);
@@ -709,7 +751,7 @@ export default function ServiciosPage() {
                       nombre: '',
                       descripcion: '',
                       precio: '',
-                      comision_empleado: '',
+                      comision_porcentaje: '',
                       duracion_minutos: '',
                       estado: 'activo',
                       categoria_id: ''
@@ -866,7 +908,7 @@ export default function ServiciosPage() {
                         nombre: '',
                         descripcion: '',
                         precio: '',
-                        comision_empleado: '',
+                        comision_porcentaje: '',
                         duracion_minutos: '',
                         estado: 'activo',
                         categoria_id: ''
