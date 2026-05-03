@@ -132,26 +132,13 @@ function AnalyticsPage() {
       // Primero verificar si existen nóminas en general
       const { data: allNominas, error: allNominasError } = await supabase
         .from('nominas')
-        .select('fecha_inicio, fecha_fin, estado, total_pagar')
+        .select('fecha_inicio, estado, total_pagar')
         .eq('empresa_id', user.empresa_id)
         .eq('estado', 'pagado')
         .order('fecha_inicio', { ascending: false })
         .limit(5);
 
-      console.log('Todas las nóminas (últimas 5):', allNominas);
-      if (allNominas && allNominas.length > 0) {
-        console.log('Fechas de nóminas existentes:');
-        allNominas.forEach((nomina, index) => {
-          console.log(`  ${index + 1}. Inicio: ${nomina.fecha_inicio}, Fin: ${nomina.fecha_fin}, Total: ${nomina.total_pagar}`);
-        });
-      }
-
       // Obtener nóminas del período con datos de empleados
-      console.log('Buscando nóminas en rango:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        filtro: filtroFecha
-      });
 
       const { data: nominasRankingData, error: nominasRankingError } = await supabase
         .from('nominas')
@@ -162,10 +149,7 @@ function AnalyticsPage() {
         .eq('empresa_id', user.empresa_id)
         .eq('estado', 'pagado')
         .gte('fecha_inicio', startDate.toISOString())
-        .lte('fecha_fin', endDate.toISOString());
-
-      console.log('Nóminas para ranking:', nominasRankingData);
-      console.log('Error en nóminas:', nominasRankingError);
+        .lte('fecha_inicio', endDate.toISOString());
 
       if (nominasRankingData && nominasRankingData.length > 0) {
         // Agrupar por empleado sumando sus nóminas
@@ -190,17 +174,9 @@ function AnalyticsPage() {
         ingresosPorEmpleado.push(...Object.values(agrupadoPorEmpleado));
       }
 
-      console.log('Ingresos por empleado procesados:', ingresosPorEmpleado);
-
       ingresosPorEmpleado.sort((a, b) => b.ingresos - a.ingresos);
 
       // Cargar datos de nóminas
-      console.log('Buscando nóminas para Resumen en rango:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        filtro: filtroFecha
-      });
-
       const { data: nominasData, error: nominasError } = await supabase
         .from('nominas')
         .select(`
@@ -210,11 +186,8 @@ function AnalyticsPage() {
         .eq('empresa_id', user.empresa_id)
         .eq('estado', 'pagado')
         .gte('fecha_inicio', startDate.toISOString())
-        .lte('fecha_fin', endDate.toISOString())
+        .lte('fecha_inicio', endDate.toISOString())
         .order('fecha_inicio', { ascending: false });
-
-      console.log('Nóminas para Resumen:', nominasData);
-      console.log('Error en Resumen de nóminas:', nominasError);
 
       // Cargar datos de servicios
       const { data: serviciosData, error: serviciosError } = await supabase
@@ -253,7 +226,6 @@ function AnalyticsPage() {
       const ticketPromedio = totalCitas > 0 ? ingresosTotales / totalCitas : 0;
 
       setIngresosData(ingresosMensualesArray);
-      console.log('Datos de estilistas a asignar:', ingresosPorEmpleado);
       setEstilistasData(ingresosPorEmpleado);
       setNominasData(nominasData || []);
       setServiciosData(distribucionServicios);
