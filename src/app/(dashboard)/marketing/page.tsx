@@ -663,57 +663,63 @@ ${mensajeConVariables}`;
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     {/* Recordatorio de Cita */}
-                    <div className="flex items-center justify-between p-4 bg-stone-400 rounded-lg">
-                      <div className="flex items-center">
-                        <Calendar className="w-5 h-5 text-amber-500 mr-3" />
-                        <div>
-                          <p className="text-black font-medium">Recordatorio de Cita</p>
-                          <p className="text-gray-100 text-sm">Citas futuras vía WhatsApp/Email</p>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full p-4 bg-stone-400 rounded-lg overflow-hidden">
+                      <div className="flex-1 w-full min-w-0">
+                        <div className="flex items-center">
+                          <Calendar className="w-5 h-5 text-amber-500 mr-3" />
+                          <div>
+                            <p className="text-black font-medium">Recordatorio de Cita</p>
+                            <p className="text-gray-100 text-sm">Citas futuras vía WhatsApp/Email</p>
+                          </div>
                         </div>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => executePredefinedCampaign('recordatorio')}
-                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white"
+                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white w-full sm:w-auto shrink-0 mt-2 sm:mt-0"
                       >
                         Ejecutar Hoy
                       </Button>
                     </div>
 
                     {/* Felicitación de Cumpleaños */}
-                    <div className="flex items-center justify-between p-4 bg-stone-400 rounded-lg">
-                      <div className="flex items-center">
-                        <Cake className="w-5 h-5 text-amber-500 mr-3" />
-                        <div>
-                          <p className="text-black font-medium">Felicitación de Cumpleaños</p>
-                          <p className="text-gray-100 text-sm">Con descuento del 10% (Requiere que el cliente tenga fecha de nacimiento registrada)</p>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full p-4 bg-stone-400 rounded-lg overflow-hidden">
+                      <div className="flex-1 w-full min-w-0">
+                        <div className="flex items-center">
+                          <Cake className="w-5 h-5 text-amber-500 mr-3" />
+                          <div>
+                            <p className="text-black font-medium">Felicitación de Cumpleaños</p>
+                            <p className="text-gray-100 text-sm">Con descuento del 10% (Requiere que el cliente tenga fecha de nacimiento registrada)</p>
+                          </div>
                         </div>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => executePredefinedCampaign('cumpleañeros_hoy')}
-                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white"
+                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white w-full sm:w-auto shrink-0 mt-2 sm:mt-0"
                       >
                         Ver Cumpleañeros Hoy
                       </Button>
                     </div>
 
                     {/* Reactivación de Clientes */}
-                    <div className="flex items-center justify-between p-4 bg-stone-400 rounded-lg">
-                      <div className="flex items-center">
-                        <Users className="w-5 h-5 text-amber-500 mr-3" />
-                        <div>
-                          <p className="text-black font-medium">Reactivación de Clientes</p>
-                          <p className="text-gray-100 text-sm">Clientes que no vienen hace 2 meses</p>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full p-4 bg-stone-400 rounded-lg overflow-hidden">
+                      <div className="flex-1 w-full min-w-0">
+                        <div className="flex items-center">
+                          <Users className="w-5 h-5 text-amber-500 mr-3" />
+                          <div>
+                            <p className="text-black font-medium">Reactivación de Clientes</p>
+                            <p className="text-gray-100 text-sm">Clientes que no vienen hace 2 meses</p>
+                          </div>
                         </div>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => executePredefinedCampaign('inactivos')}
-                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white"
+                        className="border-amber-600 text-amber-900 hover:bg-amber-600 hover:text-white w-full sm:w-auto shrink-0 mt-2 sm:mt-0"
                       >
                         Ver Pendientes
                       </Button>

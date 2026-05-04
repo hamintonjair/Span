@@ -584,12 +584,12 @@ useEffect(() => {
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Usuarios de la Empresa</h1>
             <p className="text-gray-600 mt-2">Gestiona el staff y accesos de tu empresa</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <Button
               onClick={handleCrearUsuario}
               className="flex items-center gap-2"
@@ -612,8 +612,8 @@ useEffect(() => {
         {/* Filtros */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex gap-4 items-center">
-              <div className="flex-1 relative">
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <div className="flex-1 relative w-full sm:w-auto">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
@@ -626,7 +626,7 @@ useEffect(() => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <FunnelIcon className="w-5 h-5 text-gray-400" />
                 <select
                   value={rolFilter}
@@ -634,7 +634,7 @@ useEffect(() => {
                     setRolFilter(e.target.value);
                     setItemOffset(0); // Resetear a primera página al filtrar
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 w-full"
                 >
                   <option value="todos">Todos los roles</option>
                   <option value="admin_empresa">Admin Empresa</option>
@@ -645,7 +645,7 @@ useEffect(() => {
               <Button
                 variant="outline"
                 onClick={loadUsuarios}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full sm:w-auto"
               >
                 <MagnifyingGlassIcon className="w-4 h-4" />
                 Actualizar
@@ -659,20 +659,20 @@ useEffect(() => {
           {currentUsuarios.map((usuario) => (
             <Card key={usuario.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-row justify-between items-start w-full gap-3">
                   {/* Información principal */}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                         <UserIcon className="w-5 h-5 text-amber-600" />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900">{usuario.nombre}</h3>
-                        <p className="text-sm text-gray-600">{usuario.email}</p>
+                        <p className="text-sm text-gray-600 truncate">{usuario.email}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <ShieldCheckIcon className="w-4 h-4" />
                         <span className="capitalize">{usuario.rol.replace('_', ' ')}</span>
@@ -689,7 +689,7 @@ useEffect(() => {
                   </div>
 
                   {/* Acciones */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       variant="outline"
                       size="sm"

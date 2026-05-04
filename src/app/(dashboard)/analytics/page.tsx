@@ -257,7 +257,7 @@ function AnalyticsPage() {
       <MainLayout>
         <div className="min-h-screen bg-amber-50 p-6">
           {/* Encabezado y Filtros */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full mb-8">
             <div>
               <h1 className="text-3xl font-bold text-black">Analíticas y Reportes</h1>
               <p className="text-stone-400 mt-2">
@@ -266,11 +266,11 @@ function AnalyticsPage() {
             </div>
 
             {/* Selector de fecha */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <select 
                 value={filtroFecha}
                 onChange={(e) => setFiltroFecha(e.target.value)}
-                className="w-48 px-4 py-2.5 bg-white text-black border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none cursor-pointer text-sm font-medium"
+                className="w-full sm:w-48 px-4 py-2.5 bg-white text-black border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 appearance-none cursor-pointer text-sm font-medium"
               >
                 <option value="Este Mes">Este Mes</option>
                 <option value="Últimos 3 Meses">Últimos 3 Meses</option>
@@ -341,7 +341,7 @@ function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Resumen de Nóminas */}
             <div className="lg:col-span-2">
-              <Card className="bg-stone-900 border-stone-300">
+              <Card className="bg-stone-900 border-stone-300 w-full max-w-full overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-black font-semibold flex items-center">
                     <Users className="mr-2 h-5 w-5 text-amber-500" />
@@ -349,7 +349,7 @@ function AnalyticsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto w-full block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-stone-300">
@@ -448,7 +448,7 @@ function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Tendencia de Ingresos - Ocupa 2/3 del ancho */}
             <div className="lg:col-span-2">
-              <Card className="bg-stone-900 border-stone-300">
+              <Card className="bg-stone-900 border-stone-300 w-full max-w-full overflow-hidden flex flex-col w-full h-auto p-4">
                 <CardHeader>
                   <CardTitle className="text-black font-semibold flex items-center">
                     <LineChart className="mr-2 h-5 w-5 text-amber-500" />
@@ -456,8 +456,8 @@ function AnalyticsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                  <div className="w-full h-64 sm:h-72 relative">
+                    <ResponsiveContainer width="100%" height={280} minWidth={0}>
                       <RechartsLineChart data={ingresosData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis
@@ -497,7 +497,7 @@ function AnalyticsPage() {
 
             {/* Servicios Populares - Ocupa 1/3 del ancho */}
             <div className="lg:col-span-1">
-              <Card className="bg-stone-900 border-stone-300">
+              <Card className="bg-stone-900 border-stone-300 w-full max-w-full overflow-hidden flex flex-col w-full h-auto p-4">
                 <CardHeader>
                   <CardTitle className="text-black font-semibold flex items-center">
                     <PieChart className="mr-2 h-5 w-5 text-amber-500" />
@@ -505,8 +505,8 @@ function AnalyticsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                  <div className="w-full h-64 sm:h-72 relative">
+                    <ResponsiveContainer width="100%" height={280} minWidth={0}>
                       <RechartsPieChart>
                         <Pie
                           data={serviciosData}
@@ -534,10 +534,14 @@ function AnalyticsPage() {
                         <Legend
                           verticalAlign="bottom"
                           height={36}
-                          formatter={(value: any, entry: any) => (
-                            <span style={{ color: '#d97706' }}>
-                              {entry.payload.nombre}: {entry.payload.valor}%
-                            </span>
+                          content={(props: any) => (
+                            <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-4 w-full pb-2">
+                              {props.payload.map((entry: any, index: number) => (
+                                <span key={index} style={{ color: '#d97706' }}>
+                                  {entry.payload.nombre}: {entry.payload.valor}%
+                                </span>
+                              ))}
+                            </div>
                           )}
                         />
                       </RechartsPieChart>
@@ -550,15 +554,15 @@ function AnalyticsPage() {
 
           {/* Rendimiento por Estilista - Ocupa ancho completo */}
           <div className="mt-6">
-            <Card className="bg-stone-900 border-stone-300">
-              <CardHeader>
-                <CardTitle className="text-black font-semibold flex items-center">
-                  <BarChart3 className="mr-2 h-5 w-5 text-amber-500" />
-                  Top 5 Estilistas por Rendimiento
-                </CardTitle>
-              </CardHeader>
+              <Card className="bg-stone-900 border-stone-300 w-full max-w-full overflow-hidden flex flex-col w-full h-auto p-4">
+                <CardHeader>
+                  <CardTitle className="text-black font-semibold flex items-center">
+                    <BarChart3 className="mr-2 h-5 w-5 text-amber-500" />
+                    Top 5 Estilistas por Rendimiento
+                  </CardTitle>
+                </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
+                <div className="w-full h-64 sm:h-80 relative">
                   <ResponsiveContainer width="100%" height={300} minWidth={0}>
                     <RechartsBarChart data={estilistasData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />

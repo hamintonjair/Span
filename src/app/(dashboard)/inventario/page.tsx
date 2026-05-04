@@ -579,24 +579,24 @@ export default function InventarioPage() {
         </div>
 
         {/* Lista de Productos */}
-        <Card>
+        <Card className="w-full max-w-full overflow-hidden">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Stock Actual</h3>
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Buscar producto..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="pl-10 w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-10 w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -705,12 +705,12 @@ export default function InventarioPage() {
         </Card>
 
         {/* Últimos Movimientos */}
-        <Card>
+        <Card className="w-full max-w-full overflow-hidden">
           <CardHeader>
             <h3 className="text-lg font-semibold text-gray-900">Últimos Movimientos</h3>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -773,11 +773,11 @@ export default function InventarioPage() {
               </table>
             </div>
             <div className="px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col md:flex-row justify-center md:justify-between items-center gap-4 w-full p-4">
+                <div className="text-sm text-gray-700 text-center md:text-left">
                   Mostrando {movimientosOffset + 1} a {Math.min(endMovimientosOffset + 1, totalMovimientos)} de {totalMovimientos} movimientos
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setMovimientosOffset(Math.max(0, movimientosOffset - movimientosPerPage))} disabled={movimientosOffset === 0}>
                     Anterior
                   </Button>

@@ -142,6 +142,9 @@ export default function AtencionPage() {
   // Estados para toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+  // Estado de transición para finalizar atención
+  const [isCompleting, setIsCompleting] = useState(false);
+
   // Función para mostrar toast
   const mostrarToast = (message: string, type: 'success' | 'error' | 'info') => {
     setToast({ message, type });
@@ -836,6 +839,9 @@ export default function AtencionPage() {
         return;
       }
 
+      // Establecer estado de completando para bloquear renderizado de errores
+      setIsCompleting(true);
+
       // 1. Calcular totales completos
       const subtotalServicios = serviciosAdicionales.reduce((acc, sa) => acc + sa.subtotal, 0);
       const subtotalProductos = productosAdicionales.reduce((acc, pa) => acc + pa.subtotal, 0);
@@ -985,24 +991,14 @@ export default function AtencionPage() {
         // Abrir ticket de venta en la misma pestaña con parámetro from
         window.location.href = `/ventas/imprimir/${ventaCreada.id}?from=atencion`;
         
-        // Limpiar estados
-        setTimeout(() => {
-          // Limpiar todos los estados
-          setCita(null);
-          setCliente(null);
-          setEmpleado(null);
-          setServiciosAdicionales([]);
-          setProductosAdicionales([]);
-          setTicketData(null);
-          setShowModalTicket(false);
-          
-          // ✅ Ticket abierto en misma pestaña
-          console.log('✅ Atención finalizada, ticket abierto en misma pestaña');
-        }, 500);
+        // NOTA: No limpiamos el estado isCompleting para mantener el spinner visible
+        // hasta que la nueva página del ticket cargue por completo
       }, 1000);
 
     } catch (error) {
       console.error('❌ Error finalizando atención:', error);
+      // Restaurar estado si hay error
+      setIsCompleting(false);
       mostrarToast('Error al finalizar la atención', 'error');
     }
   };
@@ -1101,6 +1097,20 @@ export default function AtencionPage() {
     );
   }
 
+  if (isCompleting) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Generando ticket...</h1>
+            <p className="text-gray-600">Por favor, espera mientras procesamos la finalización de la atención</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   if (!user || !cita || !cliente || !empleado) {
     return (
       <MainLayout>
@@ -1141,8 +1151,8 @@ export default function AtencionPage() {
 
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
             <Button
               variant="outline"
               onClick={() => router.push('/citas')}
@@ -1151,12 +1161,12 @@ export default function AtencionPage() {
               <ArrowLeft className="w-4 h-4" />
               Volver al Calendario
             </Button>
-            <div>
+            <div className="w-full">
               <h1 className="text-2xl font-bold text-gray-900">Panel de Atención Activa</h1>
               <p className="text-gray-600">Gestionando servicios para {cliente.nombre}</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right w-full lg:w-auto">
             <div className="text-sm text-gray-500">Cita #{cita.id.slice(-8)}</div>
             <div className="text-lg font-semibold text-blue-600">
               Total: ${(calcularTotal() || 0).toFixed(2)}
@@ -1165,12 +1175,12 @@ export default function AtencionPage() {
         </div>
 
         {/* Contenido Principal - Vista Dividida */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
           
           {/* Izquierda: Datos del Cliente y Servicio Agendado */}
           <div className="space-y-6">
             {/* Información del Cliente */}
-            <Card>
+            <Card className="w-full max-w-full overflow-hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -1180,26 +1190,26 @@ export default function AtencionPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                  <Input value={cliente.nombre} disabled className="bg-gray-50" />
+                  <Input value={cliente.nombre} disabled className="bg-gray-50 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
-                  <Input value={cliente.cedula || 'N/A'} disabled className="bg-gray-50" />
+                  <Input value={cliente.cedula || 'N/A'} disabled className="bg-gray-50 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                  <Input value={cliente.telefono || 'N/A'} disabled className="bg-gray-50" />
+                  <Input value={cliente.telefono || 'N/A'} disabled className="bg-gray-50 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Empleado</label>
-                  <Input value={empleado.nombre_completo} disabled className="bg-gray-50" />
+                  <Input value={empleado.nombre_completo} disabled className="bg-gray-50 w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora</label>
                   <Input 
                     value={formatearFechaCompletaBogota(cita.fecha)} 
                     disabled 
-                    className="bg-gray-50" 
+                    className="bg-gray-50 w-full" 
                   />
                 </div>
                 {cita.notas && (
@@ -1338,21 +1348,20 @@ export default function AtencionPage() {
                     const esOriginal = cita.servicios_ids.includes(servicioAdicional.servicio_id);
                     
                     return (
-                      <div key={servicioAdicional.servicio_id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
+                      <div key={servicioAdicional.servicio_id} className="flex flex-row justify-between items-center w-full p-3 gap-3 overflow-hidden border rounded-lg">
+                        <div className="flex flex-col flex-1 min-w-0 items-start">
+                          <div className="font-medium flex items-center gap-2 truncate w-full">
                             {servicio?.nombre}
                             {esOriginal && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Original</span>}
                           </div>
                           <div className="text-sm text-gray-500">
                             ${(servicio?.precio || 0).toFixed(2)} c/u
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <div className="font-medium">${(servicioAdicional.subtotal || 0).toFixed(2)}</div>
-                            <div className="text-sm text-gray-500">x{servicioAdicional.cantidad}</div>
+                          <div className="text-green-600 font-bold mt-1">
+                            ${(servicioAdicional.subtotal || 0).toFixed(2)} x{servicioAdicional.cantidad}
                           </div>
+                        </div>
+                        <div className="flex shrink-0">
                           {!esOriginal && (
                             <Button
                               size="sm"
@@ -1387,7 +1396,7 @@ export default function AtencionPage() {
                     placeholder="Buscar producto (mínimo 2 caracteres)..."
                     value={busquedaProducto}
                     onChange={(e) => setBusquedaProducto(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 w-full text-sm"
                   />
                   {buscandoProductos && (
                     <div className="absolute right-3 top-3">
@@ -1408,21 +1417,19 @@ export default function AtencionPage() {
                       {productosFiltrados.map((producto) => (
                         <div
                           key={producto.id}
-                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                          className="flex flex-row justify-between items-center w-full p-3 gap-3 overflow-hidden border rounded-lg bg-white border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                           onClick={() => agregarProducto(producto)}
                         >
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{producto?.nombre}</div>
+                          <div className="flex flex-col flex-1 min-w-0 items-start">
+                            <div className="font-medium text-gray-900 truncate w-full">{producto?.nombre}</div>
                             <div className="text-sm text-gray-500">
                               Disponible: {producto.stock || 0} unidades
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="font-semibold text-green-600">
-
-${Number(producto?.precio_venta || 0).toFixed(2)}                              </div>
+                            <div className="text-green-600 font-bold mt-1">
+                              ${Number(producto?.precio_venta || 0).toFixed(2)}
                             </div>
+                          </div>
+                          <div className="flex shrink-0">
                             <Button
                               size="sm"
                               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2"

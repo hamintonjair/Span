@@ -857,26 +857,26 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
       </div>
 
       {/* Tabla de Préstamos */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="bg-white border-gray-200 w-full max-w-full overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
           <div>
             <h3 className="text-lg font-medium text-gray-900">Préstamos Activos</h3>
             <p className="text-sm text-gray-600 mt-1">Gestión de préstamos de empleados</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
                 placeholder="Buscar por nombre de empleado..."
                 value={busquedaPrestamos}
                 onChange={(e) => setBusquedaPrestamos(e.target.value)}
-                className="pl-10 bg-white/10 border-white/20 text-gray-900 focus:ring-purple-500 w-64"
+                className="pl-10 bg-white/10 border-white/20 text-gray-900 focus:ring-purple-500 w-full sm:w-64"
               />
             </div>
             <Button
               onClick={() => setShowNuevoPrestamoModal(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Préstamo
@@ -889,7 +889,7 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -989,11 +989,11 @@ export function PanelPrestamos({ empresaId }: PanelPrestamosProps) {
           {/* Controles de Paginación */}
           {/* Forzar mostrar para depurar */}
           {true && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full p-4 text-sm mt-4 pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-500 text-center md:text-left">
                 Página {paginaActual} de {totalPaginas} ({totalRegistros} préstamos) - FORZADO
               </div>
-              <div className="flex space-x-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={irAPaginaAnterior}
                   disabled={paginaActual === 1}
