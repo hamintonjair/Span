@@ -181,14 +181,14 @@ export default function StaffPage() {
       <div className="p-6 bg-[#fdfaf6] min-h-screen">
         {/* Header */}
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <UserGroupIcon className="h-8 w-8 text-amber-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Staff Técnico</h1>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
+            <div className="flex items-center w-full">
+              <UserGroupIcon className="h-8 w-8 text-amber-600 mr-3 flex-shrink-0" />
+              <h1 className="text-2xl font-bold text-gray-900 whitespace-normal">Staff Técnico</h1>
             </div>
             <button
               onClick={() => setShowModal(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors font-medium flex items-center"
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors font-medium flex items-center"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
               Añadir Miembro
@@ -197,7 +197,7 @@ export default function StaffPage() {
         </div>
 
         {/* Buscador */}
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
+        <div className="w-full bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
           <input
             type="text"
             placeholder="Buscar por nombre o email..."
@@ -208,18 +208,18 @@ export default function StaffPage() {
         </div>
 
         {/* Tabla de Staff */}
-        <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
+        <div className="w-full bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Equipo ({filteredStaff.length} miembros)</h2>
+            <h2 className="text-lg font-semibold text-gray-900 whitespace-normal">Equipo ({filteredStaff.length} miembros)</h2>
           </div>
           
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Cargando equipo...</p>
+              <p className="text-gray-500 whitespace-normal">Cargando equipo...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-max divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

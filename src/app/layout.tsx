@@ -54,7 +54,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} w-full max-w-[100vw] overflow-x-hidden`} suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>
             {children}

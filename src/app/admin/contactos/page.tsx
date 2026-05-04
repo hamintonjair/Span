@@ -341,22 +341,22 @@ export default function AdminContactosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full max-w-[100vw] overflow-x-hidden bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/admin" className="text-gray-500 hover:text-gray-700">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between h-auto md:h-16 py-4 gap-4">
+            <div className="flex items-center gap-3 w-full">
+              <Link href="/admin" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
                 <ArrowLeftIcon className="w-5 h-5" />
               </Link>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl md:text-2xl font-semibold text-gray-900 whitespace-normal">
                 Mensajes de Contacto
               </h1>
             </div>
-            <div className="flex items-center space-x-2">
-              <EnvelopeIcon className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-500">
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <EnvelopeIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-500 whitespace-normal">
                 Gestión de contactos pendientes
               </span>
             </div>
@@ -367,8 +367,8 @@ export default function AdminContactosPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Estadísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="w-full bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <EnvelopeIcon className="w-8 h-8 text-gray-400" />
@@ -380,7 +380,7 @@ export default function AdminContactosPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="w-full bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <ExclamationTriangleIcon className="w-8 h-8 text-yellow-400" />
@@ -392,7 +392,7 @@ export default function AdminContactosPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="w-full bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <CheckCircleIcon className="w-8 h-8 text-green-400" />
@@ -404,7 +404,7 @@ export default function AdminContactosPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="w-full bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <CheckCircleIcon className="w-8 h-8 text-blue-400" />
@@ -416,7 +416,7 @@ export default function AdminContactosPage() {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="w-full bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <XCircleIcon className="w-8 h-8 text-red-400" />
@@ -430,12 +430,12 @@ export default function AdminContactosPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-lg shadow mb-6">
+        <div className="w-full bg-white rounded-lg shadow mb-6">
           <div className="px-6 py-4 border-b">
-            <h2 className="text-lg font-medium text-gray-900">Filtros</h2>
+            <h2 className="text-lg font-medium text-gray-900 whitespace-normal">Filtros</h2>
           </div>
           <div className="px-6 py-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="w-full flex flex-row overflow-x-auto gap-2 pb-2">
               <button
                 onClick={() => setFiltroEstado('todos')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -448,7 +448,7 @@ export default function AdminContactosPage() {
               </button>
               <button
                 onClick={() => setFiltroEstado('pendiente')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   filtroEstado === 'pendiente'
                     ? 'bg-yellow-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -458,7 +458,7 @@ export default function AdminContactosPage() {
               </button>
               <button
                 onClick={() => setFiltroEstado('enviado')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   filtroEstado === 'enviado'
                     ? 'bg-green-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -468,7 +468,7 @@ export default function AdminContactosPage() {
               </button>
               <button
                 onClick={() => setFiltroEstado('error')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   filtroEstado === 'error'
                     ? 'bg-red-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -478,7 +478,7 @@ export default function AdminContactosPage() {
               </button>
               <button
                 onClick={() => setFiltroEstado('leido')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                   filtroEstado === 'leido'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -596,7 +596,10 @@ export default function AdminContactosPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end flex-wrap gap-2">
                           <button
-                            onClick={() => setSelectedContacto(contacto)}
+                            onClick={() => {
+                              setSelectedContacto(contacto);
+                              setShowModal(true);
+                            }}
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium border border-amber-600 text-amber-600 bg-white hover:bg-amber-50 rounded-md transition-colors"
                             title="Ver detalles"
                           >
@@ -664,8 +667,8 @@ export default function AdminContactosPage() {
 
       {/* Modal de Detalles */}
       {showModal && selectedContacto && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-20 mx-auto w-full max-w-md p-4 md:p-6 border shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -680,32 +683,32 @@ export default function AdminContactosPage() {
               </div>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Nombre</label>
-                    <p className="text-sm text-gray-900">{selectedContacto.nombre}</p>
+                    <p className="text-sm text-gray-900 break-words">{selectedContacto.nombre}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-sm text-gray-900">{selectedContacto.email}</p>
+                    <p className="text-sm text-gray-900 break-all">{selectedContacto.email}</p>
                   </div>
                   {selectedContacto.telefono && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-                      <p className="text-sm text-gray-900">{selectedContacto.telefono}</p>
+                      <p className="text-sm text-gray-900 break-words">{selectedContacto.telefono}</p>
                     </div>
                   )}
                   {selectedContacto.empresa && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Empresa</label>
-                      <p className="text-sm text-gray-900">{selectedContacto.empresa}</p>
+                      <p className="text-sm text-gray-900 break-words">{selectedContacto.empresa}</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Asunto</label>
-                  <p className="text-sm text-gray-900">{selectedContacto.asunto}</p>
+                  <p className="text-sm text-gray-900 break-words">{selectedContacto.asunto}</p>
                 </div>
                 
                 <div>
@@ -715,14 +718,14 @@ export default function AdminContactosPage() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Estado</label>
                     <div className="mt-1">{getEstadoBadge(selectedContacto.estado)}</div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Fecha de creación</label>
-                    <p className="text-sm text-gray-900">
+                    <p className="text-sm text-gray-900 break-words">
                       {new Date(selectedContacto.creado_en).toLocaleString()}
                     </p>
                   </div>
@@ -732,7 +735,7 @@ export default function AdminContactosPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Error</label>
                     <div className="mt-1 p-3 bg-red-50 rounded-lg">
-                      <p className="text-sm text-red-700">{selectedContacto.error_message}</p>
+                      <p className="text-sm text-red-700 break-words">{selectedContacto.error_message}</p>
                     </div>
                   </div>
                 )}

@@ -79,7 +79,7 @@ function MensajeGlobalBanner() {
 
     return (
       <div className="mb-6 w-full">
-        <div className="bg-amber-900 border border-amber-700 rounded-lg p-4">
+        <div className="bg-amber-900 border border-amber-700 rounded-lg p-4 md:p-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center">
@@ -87,8 +87,8 @@ function MensajeGlobalBanner() {
               </div>
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-white mb-1">Comunicado Importante</h3>
-              <p className="text-amber-100 whitespace-pre-wrap">{mensajeGlobal}</p>
+              <h3 className="font-semibold text-white mb-1 text-sm md:text-base">Comunicado Importante</h3>
+              <p className="text-amber-100 whitespace-pre-wrap text-sm">{mensajeGlobal}</p>
             </div>
           </div>
         </div>
@@ -739,21 +739,21 @@ export default function DashboardEmpresaPage() {
   }
 
   return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="w-full max-w-full overflow-x-hidden min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="w-full max-w-full mx-auto">
           {/* Banner de mensaje global - Ancho completo */}
           <MensajeGlobalBanner key="global-banner" />
 
           {/* Header con saludo principal */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900">Hola, {user.nombre}</h1>
-            <p className="text-gray-600 mt-2 text-lg">
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 whitespace-normal">Hola, {user.nombre}</h1>
+            <p className="text-gray-600 mt-2 text-base md:text-lg whitespace-normal">
               Bienvenido a tu panel de control
             </p>
           </div>
 
           {/* Tarjetas de Resumen (KPIs) */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-300 hover:shadow-amber-600/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <h3 className="text-sm font-medium text-gray-600">Ingresos de Hoy</h3>
@@ -810,20 +810,20 @@ export default function DashboardEmpresaPage() {
           </div>
 
           {/* Gráficas de Estadísticas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 w-full">
             {/* Gráfica de Ventas */}
-            <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-300">
+            <Card className="w-full bg-white border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden">
               <CardHeader className="border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">Cajas Cerradas</h3>
-                    <p className="text-gray-600 text-sm">Montos de cierre por período</p>
+                    <h3 className="text-xl font-semibold text-gray-900 whitespace-normal">Cajas Cerradas</h3>
+                    <p className="text-gray-600 text-sm whitespace-normal">Montos de cierre por período</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       variant={filtroVentas === 'semana' ? 'primary' : 'outline'} 
                       size="sm" 
-                      className={filtroVentas === 'semana' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}
+                      className={`text-xs ${filtroVentas === 'semana' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`}
                       onClick={() => setFiltroVentas('semana')}
                     >
                       Semana
@@ -831,7 +831,7 @@ export default function DashboardEmpresaPage() {
                     <Button 
                       variant={filtroVentas === 'hoy' ? 'primary' : 'outline'} 
                       size="sm" 
-                      className={filtroVentas === 'hoy' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}
+                      className={`text-xs ${filtroVentas === 'hoy' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`}
                       onClick={() => setFiltroVentas('hoy')}
                     >
                       Hoy
@@ -839,7 +839,7 @@ export default function DashboardEmpresaPage() {
                     <Button 
                       variant={filtroVentas === 'mes' ? 'primary' : 'outline'} 
                       size="sm" 
-                      className={filtroVentas === 'mes' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}
+                      className={`text-xs ${filtroVentas === 'mes' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`}
                       onClick={() => setFiltroVentas('mes')}
                     >
                       Mes
@@ -847,7 +847,7 @@ export default function DashboardEmpresaPage() {
                     <Button 
                       variant={filtroVentas === 'anio' ? 'primary' : 'outline'} 
                       size="sm" 
-                      className={filtroVentas === 'anio' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}
+                      className={`text-xs ${filtroVentas === 'anio' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'}`}
                       onClick={() => setFiltroVentas('anio')}
                     >
                       Año
@@ -862,7 +862,7 @@ export default function DashboardEmpresaPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={ingresosSemanaData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                         <XAxis 
@@ -898,13 +898,13 @@ export default function DashboardEmpresaPage() {
             </Card>
 
             {/* Gráfica de Ingresos de la Semana */}
-            <Card className="bg-stone-900 border-stone-700 hover:shadow-lg transition-all duration-300">
+            <Card className="w-full bg-stone-900 border-stone-700 hover:shadow-lg transition-all duration-300 overflow-hidden max-w-full">
               <CardHeader className="border-stone-700">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-black">Ingresos de Citas</h3>
-                  <TrendingUp className="h-5 w-5 text-amber-500" />
+                  <h3 className="text-lg font-semibold text-black whitespace-normal">Ingresos de Citas</h3>
+                  <TrendingUp className="h-5 w-5 text-amber-500 flex-shrink-0" />
                 </div>
-                <p className="text-sm text-black">Ventas de citas completadas con servicios y productos</p>
+                <p className="text-sm text-black whitespace-normal">Ventas de citas completadas con servicios y productos</p>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
@@ -913,8 +913,8 @@ export default function DashboardEmpresaPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
                     </div>
                   ) : (
-                    <>
-                      <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
+                      <>
+                        <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={ingresosCitasData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                         <XAxis 
@@ -973,63 +973,52 @@ export default function DashboardEmpresaPage() {
                   ) : (
                     <>
                       {}
-                      <ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={300}>
+                      <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                         <Pie
                           data={estadoCitasData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="valor"
-                      >
-                        {estadoCitasData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#1f2937', 
-                          border: '1px solid #374151',
-                          borderRadius: '8px'
-                        }}
-                        labelStyle={{ color: '#d97706' }}
-                        itemStyle={{ color: '#fbbf24' }}
-                        formatter={(value: any, name: any) => [value, name]}
-                      />
-                      <Legend 
-                        verticalAlign="middle" 
-                        align="right" 
-                        layout="vertical"
-                        iconType="none"
-                        wrapperStyle={{
-                          color: '#374151',
-                          fontSize: '16px',
-                          fontWeight: 'bold'
-                        }}
-                        formatter={(value: any, entry: any) => {
-                         
-                          const nombre = entry.payload?.nombre || 'Sin nombre';
-                          const valor = entry.payload?.valor || 0;
-                          return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div 
-                                style={{ 
-                                  width: '12px', 
-                                  height: '12px', 
-                                  backgroundColor: entry.color || entry.payload?.color, 
-                                  borderRadius: '2px' 
-                                }}
-                              />
-                              <span style={{ color: '#374151', fontWeight: 'bold' }}>
+                          innerRadius={40}
+                          outerRadius={60}
+                          paddingAngle={2}
+                          dataKey="valor"
+                        >
+                          {estadoCitasData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: '#1f2937', 
+                            border: '1px solid #374151',
+                            borderRadius: '8px'
+                          }}
+                          labelStyle={{ color: '#d97706' }}
+                          itemStyle={{ color: '#fbbf24' }}
+                          formatter={(value: any, name: any) => [value, name]}
+                        />
+                        <Legend 
+                          verticalAlign="bottom" 
+                          align="center" 
+                          layout="horizontal"
+                          iconType="circle"
+                          wrapperStyle={{
+                            color: '#374151',
+                            fontSize: '12px',
+                            fontWeight: 'normal'
+                          }}
+                          formatter={(value: any, entry: any) => {
+                            const nombre = entry.payload?.nombre || 'Sin nombre';
+                            const valor = entry.payload?.valor || 0;
+                            return (
+                              <span style={{ color: '#374151', fontSize: '12px' }}>
                                 {nombre}: {valor}
                               </span>
-                            </div>
-                          );
-                        }}
-                      />
-                    </PieChart>
+                            );
+                          }}
+                        />
+                      </PieChart>
                       </ResponsiveContainer>
                     </>
                   )}
@@ -1038,7 +1027,7 @@ export default function DashboardEmpresaPage() {
             </Card>
 
           {/* Alertas de Inventario */}
-          <Card className="bg-white border-gray-200 mb-8">
+          <Card className="w-full bg-white border-gray-200 mb-8 overflow-hidden max-w-full">
             <CardHeader className="border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900">Alertas de Inventario</h3>
               <p className="text-gray-600 text-sm">Productos con stock bajo</p>
@@ -1094,21 +1083,21 @@ export default function DashboardEmpresaPage() {
       </div>
 
       {/* Tabla de Citas de Hoy - Ancho completo */}
-      <div className="w-full bg-gray-50 px-8 pb-8">
+      <div className="w-full bg-gray-50 px-4 md:px-8 pb-8">
         <div className="max-w-7xl mx-auto">
-          <Card className="bg-white border-gray-200 hover:shadow-lg transition-all duration-300 w-full">
+          <Card className="w-full bg-white border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden">
             <CardHeader className="border-gray-200">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Citas de Hoy</h3>
-                  <p className="text-gray-600 text-sm">Todas las citas del día (sin importar estado)</p>
+                  <h3 className="text-xl font-semibold text-gray-900 whitespace-normal">Citas de Hoy</h3>
+                  <p className="text-gray-600 text-sm whitespace-normal">Todas las citas del día (sin importar estado)</p>
                 </div>
-                <Calendar className="h-5 w-5 text-blue-600" />
+                <Calendar className="h-5 w-5 text-blue-600 flex-shrink-0" />
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+            <CardContent className="p-4 md:p-6">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-max border-collapse">
                   <thead>
                     <tr className="bg-gray-50 border-b">
                       <th className="text-left p-4 font-medium text-gray-700 border-r">Hora</th>

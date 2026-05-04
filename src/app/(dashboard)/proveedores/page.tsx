@@ -470,9 +470,9 @@ export default function ProveedoresPage() {
         </Card>
 
         {/* Tabla de Proveedores */}
-        <Card>
+        <Card className="w-full max-w-full overflow-hidden">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -572,11 +572,11 @@ export default function ProveedoresPage() {
 
             {/* Paginación */}
             <div className="px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3 w-full p-4">
+                <div className="text-sm text-gray-700 text-center sm:text-left">
                   Mostrando {itemOffset + 1} a {Math.min(endOffset + 1, totalCount)} de {totalCount} resultados
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"

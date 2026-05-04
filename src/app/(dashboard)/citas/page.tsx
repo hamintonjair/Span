@@ -15,6 +15,16 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { useCancelacionAutomatica } from '@/hooks/use-cancelacion-automatica';
 import { registrarLog } from '@/lib/audit';
 
+// Formateador de dinero para Colombia
+const formatMoney = (amount: number) => {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 // Interfaces TypeScript
 interface Cita {
   id: string;
@@ -1274,14 +1284,14 @@ export default function CitasPage() {
       
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Calendario de Citas</h1>
             <p className="text-gray-600">Gestiona las citas del salón</p>
           </div>
           <Button
             onClick={() => abrirModalNuevaCita()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nueva Cita
@@ -1289,9 +1299,9 @@ export default function CitasPage() {
         </div>
 
         {/* Instrucciones */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="text-sm font-semibold text-blue-800 mb-2">ℹ️ ¿Cómo funciona?</h3>
-          <div className="text-sm text-blue-700 space-y-1">
+          <div className="text-xs sm:text-sm text-blue-700 space-y-1">
             <div>• <strong>Click en cualquier día:</strong> Crear nueva cita</div>
             <div>• <strong>Botón azul (+):</strong> Agendar nueva cita rápidamente</div>
             <div>• <strong>Click en cita existente:</strong> Ver detalles de la cita</div>
@@ -1306,17 +1316,18 @@ export default function CitasPage() {
         {/* Calendario Mensual Completo */}
         <Card className="border border-gray-200">
           <CardHeader className="bg-gray-50 border-b border-gray-200">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center w-full">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigateMonth('prev')}
+                className="flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4" />
-                Anterior
+                <span className="hidden sm:inline ml-1">Anterior</span>
               </Button>
               
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 text-center flex-1">
                 {currentDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
               </h2>
               
@@ -1324,25 +1335,127 @@ export default function CitasPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => navigateMonth('next')}
+                className="flex-shrink-0"
               >
-                Siguiente
+                <span className="hidden sm:inline mr-1">Siguiente</span>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-4">
-            {/* Días de la semana */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
-                <div key={dia} className="text-center text-sm font-medium text-gray-600 py-2">
-                  {dia}
-                </div>
-              ))}
+            {/* Vista Desktop - Calendario Mensual */}
+            <div className="hidden sm:block">
+              {/* Días de la semana */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
+                  <div key={dia} className="text-center text-sm font-medium text-gray-600 py-2">
+                    {dia}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Días del mes - CUADRÍCULA COMPLETA */}
+              <div className="grid grid-cols-7 gap-1 calendar-grid">
+                {renderCalendar()}
+              </div>
             </div>
-            
-            {/* Días del mes - CUADRÍCULA COMPLETA */}
-            <div className="grid grid-cols-7 gap-1 calendar-grid">
-              {renderCalendar()}
+
+            {/* Vista Móvil - Lista Vertical de Citas */}
+            <div className="sm:hidden">
+              <div className="space-y-4">
+                {Object.entries(
+                  citas.reduce((acc: Record<string, typeof citas>, cita) => {
+                    const fecha = format(parseISO(cita.fecha), 'yyyy-MM-dd');
+                    if (!acc[fecha]) acc[fecha] = [];
+                    acc[fecha].push(cita);
+                    return acc;
+                  }, {})
+                )
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([fecha, citasDelDia]) => (
+                    <div key={fecha} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900">
+                          {format(parseISO(fecha + 'T12:00:00'), 'EEEE d MMMM', { locale: es })}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {citasDelDia.length} cita{citasDelDia.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="divide-y divide-gray-200">
+                        {citasDelDia
+                          .sort((a, b) => a.fecha.localeCompare(b.fecha))
+                          .map((cita) => (
+                            <div
+                              key={cita.id}
+                              onClick={() => setSelectedCita(cita)}
+                              className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                              data-cita-id={cita.id}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
+                                      cita.estado === 'confirmada' ? 'bg-green-100 text-green-800 border-green-200' :
+                                      cita.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                      'bg-gray-100 text-gray-800 border-gray-200'
+                                    }`}>
+                                      {cita.estado}
+                                    </span>
+                                    <span className="text-sm text-gray-500">
+                                      {format(parseISO(cita.fecha), 'HH:mm')}
+                                    </span>
+                                  </div>
+                                  <p className="font-medium text-gray-900 truncate">
+                                    {cita.clientes?.nombre || 'Cliente'}
+                                  </p>
+                                  <p className="text-sm text-gray-600 truncate">
+                                    {cita.servicios?.nombre || 'Servicio'}
+                                  </p>
+                                </div>
+                                <div className="text-right flex-shrink-0 ml-2">
+                                  <p className="font-semibold text-gray-900">
+                                    {cita.total_estimado > 0 ? formatMoney(cita.total_estimado) : '-'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                      <div className="p-2 bg-gray-50 border-t border-gray-200">
+                        <button
+                          onClick={() => abrirModalNuevaCita(fecha)}
+                          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center text-sm font-medium transition-colors"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Agregar Cita
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                
+                {/* Si no hay citas en el mes actual */}
+                {Object.keys(
+                  citas.reduce((acc: Record<string, typeof citas>, cita) => {
+                    const fecha = format(parseISO(cita.fecha), 'yyyy-MM-dd');
+                    if (!acc[fecha]) acc[fecha] = [];
+                    acc[fecha].push(cita);
+                    return acc;
+                  }, {})
+                ).length === 0 && (
+                  <div className="text-center py-8">
+                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No hay citas programadas este mes</p>
+                    <button
+                      onClick={() => abrirModalNuevaCita()}
+                      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center mx-auto text-sm font-medium transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Crear Primera Cita
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

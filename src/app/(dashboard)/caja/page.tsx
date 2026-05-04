@@ -926,29 +926,29 @@ export default function CajaPage() {
                                 </div>
                                 <h3 className="text-xl font-semibold text-green-800">Caja Abierta</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-6 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                 <div className="bg-white rounded-lg p-4 shadow-sm">
                                     <span className="text-gray-600 block mb-1">Fecha Apertura</span>
-                                    <p className="font-semibold text-gray-900">{new Date(cajaActual.fecha_apertura).toLocaleString('es-CO')}</p>
+                                    <p className="font-semibold text-gray-900 break-words">{new Date(cajaActual.fecha_apertura).toLocaleString('es-CO')}</p>
                                 </div>
                                 <div className="bg-white rounded-lg p-4 shadow-sm">
                                     <span className="text-gray-600 block mb-1">Monto Inicial</span>
-                                    <p className="font-semibold text-gray-900">{formatMoney(cajaActual?.monto_apertura || 0)}</p>
+                                    <p className="font-semibold text-gray-900 break-words">{formatMoney(cajaActual?.monto_apertura || 0)}</p>
                                 </div>
                                 <div className="bg-white rounded-lg p-4 shadow-sm">
                                     <span className="text-gray-600 block mb-1">Ventas Acumuladas</span>
-                                    <p className="font-semibold text-green-600 text-lg">{formatMoney(ventasAcumuladas)}</p>
+                                    <p className="font-semibold text-green-600 text-lg break-words">{formatMoney(ventasAcumuladas)}</p>
                                 </div>
                                 <div className="bg-white rounded-lg p-4 shadow-sm">
                                     <span className="text-gray-600 block mb-1">Monto Esperado</span>
-                                    <p className="font-semibold text-blue-600 text-lg">{formatMoney((cajaActual?.monto_apertura || 0) + ventasAcumuladas)}</p>
+                                    <p className="font-semibold text-blue-600 text-lg break-words">{formatMoney((cajaActual?.monto_apertura || 0) + ventasAcumuladas)}</p>
                                 </div>
                             </div>
                             
                             {/* Desglose de Ingresos en Tiempo Real */}
                             <div className="mt-4 pt-4 border-t border-gray-200">
                                 <h4 className="text-sm font-medium text-gray-700 mb-3">Desglose de Ingresos</h4>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-3 w-full">
                                     <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
                                         <div className="flex items-center space-x-2 mb-1">
                                             <ShoppingBagIcon width={16} height={16} className="text-green-600" />
@@ -1004,14 +1004,14 @@ export default function CajaPage() {
                                 {/* Efectivo Esperado */}
                                 <div className="mt-4 pt-4 border-t border-gray-200">
                                     <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex flex-col">
                                             <div>
                                                 <h5 className="text-sm font-medium text-indigo-700">Efectivo Esperado</h5>
-                                                <p className="text-xs text-indigo-600 mt-1">
+                                                <p className="text-xs text-indigo-600 mt-1 break-words">
                                                     {formatMoney(cajaActual?.monto_apertura || 0)} (apertura) + {formatMoney(ingresosTurno.ingresosPOS + ingresosTurno.ingresosCitas)} (ventas) + {formatMoney(ingresosTurno.recaudoPrestamos)} (recaudo) - {formatMoney(ingresosTurno.egresosPrestamos || 0)} (egresos)
                                                 </p>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-right mt-3">
                                                 <p className="text-2xl font-bold text-indigo-800">{formatMoney(calcularEfectivoEsperado())}</p>
                                             </div>
                                         </div>
@@ -1595,7 +1595,7 @@ export default function CajaPage() {
                     {/* Montos sugeridos */}
                     <div className="mb-6">
                         <p className="text-sm font-medium text-gray-700 mb-3">Montos rápidos:</p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="flex flex-wrap gap-2 justify-center">
                             {[10000, 20000, 50000, 100000].map((monto) => (
                                 <button
                                     key={monto}
@@ -1609,13 +1609,13 @@ export default function CajaPage() {
                     </div>
                     
                     {/* Botones con diseño mejorado */}
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full">
                         <button
                             onClick={() => {
                                 setShowModalApertura(false);
                                 setMontoApertura('');
                             }}
-                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
+                            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
                         >
                             <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1625,7 +1625,7 @@ export default function CajaPage() {
                         <button
                             onClick={abrirCaja}
                             disabled={isLoading || !montoApertura || parseFloat(montoApertura) < 0}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg"
+                            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-300 disabled:to-gray-400 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg"
                         >
                             {isLoading ? (
                                 <>

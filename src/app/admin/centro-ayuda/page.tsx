@@ -341,17 +341,17 @@ export default function CentroAyudaPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Cabecera */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Centro de Ayuda</h1>
-              <p className="mt-2 text-gray-600">Gestiona los artículos de ayuda y tutoriales para los usuarios</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
+            <div className="w-full">
+              <h1 className="text-3xl font-bold text-gray-900 whitespace-normal">Centro de Ayuda</h1>
+              <p className="mt-2 text-gray-600 whitespace-normal">Gestiona los artículos de ayuda y tutoriales para los usuarios</p>
             </div>
             <Button
               onClick={() => {
                 resetForm();
                 setShowModal(true);
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto"
             >
               <PlusIcon className="w-4 h-4" />
               Nuevo Artículo
@@ -360,21 +360,21 @@ export default function CentroAyudaPage() {
         </div>
 
         {/* Lista de Artículos */}
-        <div className="bg-white shadow rounded-lg">
+        <div className="w-full bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Artículos de Ayuda</h2>
+            <h2 className="text-lg font-medium text-gray-900 whitespace-normal">Artículos de Ayuda</h2>
           </div>
           
           {loading ? (
             <div className="px-6 py-12 text-center">
               <div className="inline-block w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <p className="mt-4 text-gray-600">Cargando artículos...</p>
+              <p className="mt-4 text-gray-600 whitespace-normal">Cargando artículos...</p>
             </div>
           ) : articulos.length === 0 ? (
-            <div className="px-6 py-12 text-center">
+            <div className="w-full px-6 py-12 text-center">
               <BookOpenIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No hay artículos de ayuda creados aún</p>
-              <p className="text-sm text-gray-500 mt-2">Crea tu primer artículo para empezar</p>
+              <p className="text-gray-600 whitespace-normal">No hay artículos de ayuda creados aún</p>
+              <p className="text-sm text-gray-500 mt-2 whitespace-normal">Crea tu primer artículo para empezar</p>
             </div>
           ) : (
             <div className="space-y-4">

@@ -1045,7 +1045,7 @@ export default function AyudaPage() {
             </div>
 
             {/* Filtros por plan */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 w-full">
               <button
                 onClick={() => setFiltroPlan('todos')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -1089,11 +1089,11 @@ export default function AyudaPage() {
             </div>
 
             {/* Estadísticas rápidas */}
-            <div className="flex gap-6 mt-6">
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-6 w-full mt-6">
               {stats.map((stat, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <span className="text-2xl font-bold">{stat.value}</span>
-                  <span className="text-amber-200">{stat.label}</span>
+                  <span className="text-amber-200 whitespace-nowrap">{stat.label}</span>
                 </div>
               ))}
             </div>
@@ -1153,13 +1153,13 @@ export default function AyudaPage() {
                       onClick={() => toggleModulo(modulo.id)}
                       className="px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col sm:flex-row items-start gap-3 w-full">
                         <div className={`${modulo.color} text-white p-3 rounded-xl shadow-md flex-shrink-0`}>
                           {modulo.icono}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-xl font-bold text-gray-800">
+                        <div className="flex-1 w-full min-w-0">
+                          <div className="flex flex-col sm:flex-row items-start gap-2 mb-1">
+                            <h2 className="text-xl font-bold text-gray-800 whitespace-normal">
                               {modulo.titulo}
                             </h2>
                             {modulo.plan && (
@@ -1169,20 +1169,20 @@ export default function AyudaPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-gray-500 text-sm">
+                          <p className="text-gray-500 text-sm whitespace-normal">
                             {modulo.descripcion}
                           </p>
-                        </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <Badge variant="secondary">
-                            {modulo.contenido.length} guía{modulo.contenido.length !== 1 ? 's' : ''}
-                          </Badge>
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                            {expandido ? (
-                              <ChevronUpIcon className="w-5 h-5 text-gray-600" />
-                            ) : (
-                              <ChevronDownIcon className="w-5 h-5 text-gray-600" />
-                            )}
+                          <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <Badge variant="secondary">
+                              {modulo.contenido.length} guía{modulo.contenido.length !== 1 ? 's' : ''}
+                            </Badge>
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                              {expandido ? (
+                                <ChevronUpIcon className="w-5 h-5 text-gray-600" />
+                              ) : (
+                                <ChevronDownIcon className="w-5 h-5 text-gray-600" />
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

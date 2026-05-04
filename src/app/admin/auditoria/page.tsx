@@ -50,7 +50,7 @@ const DatePicker = ({ label, value, onChange }: {
   value: string; 
   onChange: (value: string) => void 
 }) => (
-  <div className="space-y-2">
+  <div className="space-y-2 w-full">
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <input
       type="datetime-local"
@@ -401,14 +401,14 @@ function AuditoriaPageContent() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="w-full max-w-[100vw] px-4 md:px-6 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 whitespace-normal">
               <ShieldCheckIcon className="w-8 h-8 text-amber-600" />
               Centro de Auditoría Global
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 mt-2 text-sm md:text-base whitespace-normal">
               Monitoreo de actividades de todas las empresas del sistema
             </p>
           </div>
@@ -417,7 +417,8 @@ function AuditoriaPageContent() {
         <Card>
           <CardHeader>
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8" aria-label="Tabs">
+              <div className="w-full overflow-x-auto flex flex-nowrap">
+                <nav className="flex space-x-8 min-w-max" aria-label="Tabs">
                 <button
                   onClick={() => setActiveTab('empresas')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -444,7 +445,8 @@ function AuditoriaPageContent() {
                     Auditoría Interna
                   </div>
                 </button>
-              </nav>
+                </nav>
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -460,7 +462,7 @@ function AuditoriaPageContent() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
                 {/* Empresa */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -539,21 +541,29 @@ function AuditoriaPageContent() {
               </div>
 
               {/* Botones de acción */}
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Button
                     onClick={limpiarFiltros}
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto whitespace-nowrap"
                   >
                     <XMarkIcon className="w-4 h-4 mr-2" />
                     Limpiar Filtros
                   </Button>
                   <Button
+                    onClick={cargarAuditoriaEmpresas}
+                    className="w-full sm:w-auto whitespace-nowrap"
+                  >
+                    <MagnifyingGlassIcon className="w-4 h-4 mr-2" />
+                    Buscar
+                  </Button>
+                  <Button
                     onClick={exportarAuditoriaCompleta}
                     variant="outline"
                     size="sm"
-                    className="text-green-600 border-green-300 hover:bg-green-50"
+                    className="w-full sm:w-auto text-green-600 border-green-300 hover:bg-green-50 whitespace-nowrap"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -578,7 +588,7 @@ function AuditoriaPageContent() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 {/* Búsqueda */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -611,12 +621,13 @@ function AuditoriaPageContent() {
               </div>
 
               {/* Botones de acción */}
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Button
                     onClick={limpiarFiltrosInterna}
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto whitespace-nowrap"
                   >
                     <XMarkIcon className="w-4 h-4 mr-2" />
                     Limpiar Filtros

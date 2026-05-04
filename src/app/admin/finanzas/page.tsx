@@ -527,33 +527,34 @@ export default function FinanzasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf6] p-6">
+    <div className="min-h-screen bg-[#fdfaf6] w-full max-w-[100vw] px-4 md:px-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reporte Financiero</h1>
-          <p className="text-gray-500 text-lg">Análisis completo de ingresos y transacciones</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <div className="w-full">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 whitespace-normal">Reporte Financiero</h1>
+          <p className="text-gray-500 text-sm md:text-lg whitespace-normal">Análisis completo de ingresos y transacciones</p>
         </div>
         <Button
           onClick={exportarTransaccionesExcel}
           variant="outline"
-          className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:border-amber-600"
+          className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:border-amber-600 w-full sm:w-auto"
           disabled={!reporte?.transacciones || reporte.transacciones.length === 0}
         >
           <ArrowDownTrayIcon className="w-4 h-4 mr-2" />
-          Exportar Excel
+          <span className="hidden sm:inline">Exportar Excel</span>
+          <span className="sm:hidden">Excel</span>
         </Button>
       </div>
 
       {/* Barra de Filtros Inteligente */}
-      <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm flex gap-4 mb-6">
+      <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 mb-6 w-full">
         <div className="flex items-center gap-2">
           <FunnelIcon className="w-5 h-5 text-gray-400" />
           <span className="text-sm font-medium text-gray-700">Filtros:</span>
         </div>
         
         {/* Dropdown Empresa */}
-        <div className="flex-1 max-w-xs">
+        <div className="w-full md:flex-1 md:max-w-xs">
           <select
             value={selectedEmpresa}
             onChange={(e) => setSelectedEmpresa(e.target.value)}
@@ -569,7 +570,7 @@ export default function FinanzasPage() {
         </div>
 
         {/* Rango de Fechas */}
-        <div className="flex-1 max-w-xs">
+        <div className="w-full md:flex-1 md:max-w-xs">
           <input
             type="date"
             value={fechaInicio}
@@ -578,7 +579,7 @@ export default function FinanzasPage() {
             placeholder="Fecha inicio"
           />
         </div>
-        <div className="flex-1 max-w-xs">
+        <div className="w-full md:flex-1 md:max-w-xs">
           <input
             type="date"
             value={fechaFin}
@@ -590,7 +591,7 @@ export default function FinanzasPage() {
       </div>
 
       {/* Métricas Avanzadas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 w-full">
         {/* Ingresos por Plan */}
         <Card className="bg-white border border-gray-100 shadow-sm rounded-lg hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -665,7 +666,7 @@ export default function FinanzasPage() {
       </div>
 
       {/* Tarjetas de Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 mb-8 w-full">
         {/* Total Ingresos */}
         <Card className="bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
           <CardContent className="p-6">
@@ -788,7 +789,7 @@ export default function FinanzasPage() {
       </div>
 
       {/* Gráfico de Barras Mensual */}
-      <Card className="bg-white border border-gray-100 shadow-sm rounded-xl mb-8">
+      <Card className="bg-white border border-gray-100 shadow-sm rounded-xl mb-8 w-full overflow-hidden">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Evolución Mensual</h3>
           
@@ -824,7 +825,7 @@ export default function FinanzasPage() {
       </Card>
 
       {/* Tabla de Transacciones */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm w-full">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
             Transacciones ({transaccionesFiltradas.length || 0})
@@ -832,7 +833,7 @@ export default function FinanzasPage() {
         </div>
         
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

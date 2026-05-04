@@ -593,14 +593,14 @@ export default function PlansPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="w-full max-w-[100vw] px-4 md:px-6 space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Planes y Beneficios</h1>
-            <p className="text-gray-600 mt-2">Gestiona los planes de suscripción y sus beneficios</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+          <div className="w-full">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 whitespace-normal">Planes y Beneficios</h1>
+            <p className="text-gray-600 mt-2 text-sm md:text-base whitespace-normal">Gestiona los planes de suscripción y sus beneficios</p>
           </div>
-          <Button onClick={handleCreateNew} className="flex items-center gap-2">
+          <Button onClick={handleCreateNew} className="flex items-center gap-2 w-full md:w-auto">
             <PlusIcon className="w-4 h-4" />
             Nuevo Plan
           </Button>
@@ -705,7 +705,7 @@ export default function PlansPage() {
 
         {/* Modal de Edición */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-[1100px] w-[95vw] bg-white rounded-2xl shadow-xl p-8">
+          <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl bg-white shadow-xl p-4 md:p-6">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-gray-900">
                 {editingPlan ? 'Editar Plan' : 'Crear Nuevo Plan'}
@@ -718,7 +718,7 @@ export default function PlansPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 gap-6">
               {/* Columna Izquierda: Información Básica y Límites */}
               <div className="space-y-6">
                 <div>
@@ -772,7 +772,7 @@ export default function PlansPage() {
 
                 <div>
                   <Label className="text-base font-semibold text-gray-900 mb-4 block">Límites y Restricciones</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="space-y-3">
                       <Label htmlFor="max_usuarios" className="text-sm font-medium text-gray-700">Máximo de Usuarios</Label>
                       <Input
@@ -804,12 +804,12 @@ export default function PlansPage() {
                 <Label className="text-base font-semibold text-gray-900 mb-4 block">Módulos y Beneficios</Label>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Inventario */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">📦</span>
-                      <div className="flex-1">
-                        <Label htmlFor="tiene_inventario" className="text-sm font-semibold text-gray-800">Inventario</Label>
-                        <p className="text-xs text-gray-600 mt-1">Control de stock y productos</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">📦</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="tiene_inventario" className="text-sm font-semibold text-gray-800 whitespace-normal">Inventario</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Control de stock y productos</p>
                       </div>
                     </div>
                     <Switch
@@ -821,12 +821,12 @@ export default function PlansPage() {
                   </div>
 
                   {/* Comisiones */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">💰</span>
-                      <div className="flex-1">
-                        <Label htmlFor="tiene_comisiones" className="text-sm font-semibold text-gray-800">Comisiones</Label>
-                        <p className="text-xs text-gray-600 mt-1">Cálculo de pagos a empleados</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">💰</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="tiene_comisiones" className="text-sm font-semibold text-gray-800 whitespace-normal">Comisiones</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Cálculo de pagos a empleados</p>
                       </div>
                     </div>
                     <Switch
@@ -838,12 +838,12 @@ export default function PlansPage() {
                   </div>
 
                   {/* Marketing */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">📢</span>
-                      <div className="flex-1">
-                        <Label htmlFor="tiene_marketing" className="text-sm font-semibold text-gray-800">Marketing</Label>
-                        <p className="text-xs text-gray-600 mt-1">Envío de promociones</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">📢</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="tiene_marketing" className="text-sm font-semibold text-gray-800 whitespace-normal">Marketing</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Envío de promociones</p>
                       </div>
                     </div>
                     <Switch
@@ -855,12 +855,12 @@ export default function PlansPage() {
                   </div>
 
                   {/* Nóminas */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">💳</span>
-                      <div className="flex-1">
-                        <Label htmlFor="tiene_nominas" className="text-sm font-semibold text-gray-800">Nóminas</Label>
-                        <p className="text-xs text-gray-600 mt-1">Gestión de pagos y comisiones</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">💳</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="tiene_nominas" className="text-sm font-semibold text-gray-800 whitespace-normal">Nóminas</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Gestión de pagos y comisiones</p>
                       </div>
                     </div>
                     <Switch
@@ -872,12 +872,12 @@ export default function PlansPage() {
                   </div>
 
                   {/* Analytics */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">📊</span>
-                      <div className="flex-1">
-                        <Label htmlFor="tiene_analytics" className="text-sm font-semibold text-gray-800">Analytics</Label>
-                        <p className="text-xs text-gray-600 mt-1">Análisis avanzado de datos</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">📊</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="tiene_analytics" className="text-sm font-semibold text-gray-800 whitespace-normal">Analytics</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Análisis avanzado de datos</p>
                       </div>
                     </div>
                     <Switch
@@ -889,12 +889,12 @@ export default function PlansPage() {
                   </div>
 
                   {/* Soporte Prioritario */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl hover:shadow-md transition-all h-full">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">⭐</span>
-                      <div className="flex-1">
-                        <Label htmlFor="soporte_prioritario" className="text-sm font-semibold text-gray-800">Soporte Prioritario</Label>
-                        <p className="text-xs text-gray-600 mt-1">Atención prioritaria 24/7</p>
+                  <div className="w-full flex items-center justify-between p-4 bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 pr-2">
+                      <span className="text-2xl flex-shrink-0">⭐</span>
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor="soporte_prioritario" className="text-sm font-semibold text-gray-800 whitespace-normal">Soporte Prioritario</Label>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">Atención prioritaria 24/7</p>
                       </div>
                     </div>
                     <Switch

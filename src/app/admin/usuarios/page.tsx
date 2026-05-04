@@ -477,15 +477,15 @@ export default function UsuariosPage() {
 
   return (
     <MainLayout>
-      <div className="p-6 bg-amber-50 min-h-screen">
+      <div className="w-full max-w-[100vw] px-4 md:px-6 bg-amber-50 min-h-screen">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestión de Usuarios</h1>
-              <p className="text-gray-600">Administra todos los usuarios del sistema</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div className="w-full">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 whitespace-normal">Gestión de Usuarios</h1>
+              <p className="text-gray-600 text-sm md:text-base whitespace-normal">Administra todos los usuarios del sistema</p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
               <SimpleButton
                 variant="outline"
                 onClick={() => {
@@ -515,9 +515,9 @@ export default function UsuariosPage() {
         </div>
 
         {/* Filtros y búsqueda */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 md:p-6 mb-6 w-full">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="w-full md:flex-1">
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
@@ -525,13 +525,13 @@ export default function UsuariosPage() {
                   placeholder="Buscar por nombre o email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 w-96"
+                  className="pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200 w-full"
                 />
               </div>
             </div>
             
             {/* Estadísticas */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 md:space-x-4">
               <Badge variant="default" className="px-4 py-2 bg-green-500/50 text-black border border-green-500/50">
                 {filteredUsuarios.filter(u => u.activo).length} Activos
               </Badge>
@@ -543,15 +543,15 @@ export default function UsuariosPage() {
         </div>
 
         {/* Tabla de usuarios */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500"></div>
               <span className="ml-4 text-gray-400 text-lg">Cargando usuarios...</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[700px]">
                 <thead className="bg-black/5">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -671,10 +671,10 @@ export default function UsuariosPage() {
               </table>
               
               {filteredUsuarios.length === 0 && !loading && (
-                <div className="text-center py-20">
-                  <UserCircleIcon className="w-20 h-20 text-gray-600 mx-auto mb-6" />
-                  <p className="text-gray-400 text-xl mb-2">No se encontraron usuarios</p>
-                  <p className="text-gray-500 text-sm">
+                <div className="text-center py-20 w-full">
+                  <UserCircleIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 text-lg md:text-xl mb-2 whitespace-normal">No se encontraron usuarios</p>
+                  <p className="text-gray-500 text-sm whitespace-normal">
                     {searchTerm ? 'Intenta con otro término de búsqueda' : 'No hay usuarios registrados en el sistema'}
                   </p>
                 </div>
@@ -685,7 +685,7 @@ export default function UsuariosPage() {
 
         {/* Paginación */}
         {filteredUsuarios.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 md:px-6 py-3 bg-white border-t border-gray-200 gap-4">
             <div className="text-sm text-gray-700">
               Mostrando {itemOffset + 1} a {Math.min(endOffset, filteredUsuarios.length)} de {filteredUsuarios.length} usuarios
             </div>

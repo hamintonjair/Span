@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { MainLayout } from '@/components/layout/main-layout';
-import { MagnifyingGlassIcon, PlusIcon, MinusIcon, TrashIcon, UserIcon, CreditCardIcon, BanknotesIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PlusIcon, MinusIcon, TrashIcon, UserIcon, CreditCardIcon, BanknotesIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 
 // Formateador de dinero para Colombia
 const formatMoney = (amount: number) => {
@@ -113,6 +113,9 @@ export default function VentasNuevaPage() {
   const [impuestos, setImpuestos] = useState(0);
   const [descuentos, setDescuentos] = useState(0);
   const [total, setTotal] = useState(0);
+
+  // Estado de pestañas para móvil
+  const [activeTab, setActiveTab] = useState<'productos' | 'carrito'>('productos');
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -529,8 +532,40 @@ export default function VentasNuevaPage() {
           </div>
         </div>
 
-        {/* Contenido principal */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Navegación móvil - Pestañas */}
+        <div className="lg:hidden bg-white border-b border-gray-200">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('productos')}
+              className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                activeTab === 'productos'
+                  ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center justify-center">
+                <MagnifyingGlassIcon className="w-5 h-5 mr-2" />
+                Productos
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('carrito')}
+              className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                activeTab === 'carrito'
+                  ? 'bg-green-50 text-green-700 border-b-2 border-green-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center justify-center">
+                <ShoppingBagIcon className="w-5 h-5 mr-2" />
+                Carrito {carrito.length > 0 && `(${carrito.length})`}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Contenido principal - Desktop */}
+        <div className="hidden lg:flex flex-1 flex-row overflow-hidden">
           {/* Columna Izquierda - Catálogo de Productos */}
           <div className="w-1/2 bg-white border-r border-gray-200 flex flex-col">
             {/* Barra de búsqueda */}
@@ -549,7 +584,7 @@ export default function VentasNuevaPage() {
 
             {/* Grid de Productos - SOLO CON PRECIO > 0 Y PAGINACIÓN */}
             <div className="flex-1 p-4 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 w-full">
                 {productosPaginados.map((producto: Producto) => (
                   <div
                     key={`producto_${producto.id}`}
@@ -652,47 +687,49 @@ export default function VentasNuevaPage() {
                 <div className="space-y-4">
                   {carrito.map((item) => (
                     <div key={item.id} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {item.producto?.nombre}
+                      <div className="flex flex-col space-y-3 w-full">
+                        <div className="flex items-start justify-between w-full">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 break-words">
+                              {item.producto?.nombre}
+                            </div>
+                            {/* PRECIO UNITARIO CORRECTO */}
+                            <div className="text-sm text-gray-500">
+                              {formatMoney(item.precio_unitario)} c/u
+                            </div>
                           </div>
-                          {/* PRECIO UNITARIO CORRECTO */}
-                          <div className="text-sm text-gray-500">
-                            {formatMoney(item.precio_unitario)} c/u
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => eliminarDelCarrito(item.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
-                            className="p-1 rounded hover:bg-gray-200"
+                            onClick={() => eliminarDelCarrito(item.id)}
+                            className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
                           >
-                            <MinusIcon className="w-4 h-4" />
-                          </button>
-                          <span className="w-8 text-center">{item.cantidad}</span>
-                          <button
-                            onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
-                            className="p-1 rounded hover:bg-gray-200"
-                          >
-                            <PlusIcon className="w-4 h-4" />
+                            <TrashIcon className="w-5 h-5" />
                           </button>
                         </div>
 
-                        <div className="text-right">
-                          <div className="font-medium text-gray-900">
-                            {formatMoney(item.subtotal)}
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                              className="p-1 rounded hover:bg-gray-200"
+                            >
+                              <MinusIcon className="w-4 h-4" />
+                            </button>
+                            <span className="w-8 text-center">{item.cantidad}</span>
+                            <button
+                              onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                              className="p-1 rounded hover:bg-gray-200"
+                            >
+                              <PlusIcon className="w-4 h-4" />
+                            </button>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            IVA: {formatMoney(item.impuesto_item)}
+
+                          <div className="text-right">
+                            <div className="font-medium text-gray-900">
+                              {formatMoney(item.subtotal)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              IVA: {formatMoney(item.impuesto_item)}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -719,7 +756,7 @@ export default function VentasNuevaPage() {
                     type="number"
                     value={descuentos}
                     onChange={(e) => setDescuentos(parseFloat(e.target.value) || 0)}
-                    className="w-24 text-right border border-gray-300 rounded px-2 py-1"
+                    className="w-full text-right border border-gray-300 rounded px-2 py-1"
                   />
                 </div>
                 <div className="flex justify-between text-lg font-bold">
@@ -731,12 +768,231 @@ export default function VentasNuevaPage() {
               <button
                 onClick={() => setShowPagoModal(true)}
                 disabled={!puedeCobrar}
-                className="w-full mt-4 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full mt-4 bg-green-600 text-white py-4 text-lg rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Cobrar
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Contenido principal - Móvil */}
+        <div className="lg:hidden flex-1 flex-col overflow-hidden">
+          {/* Pestaña de Productos */}
+          {activeTab === 'productos' && (
+            <div className="flex-1 bg-white flex flex-col">
+              {/* Barra de búsqueda */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    value={busquedaProducto}
+                    onChange={(e) => setBusquedaProducto(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Grid de Productos */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {productosPaginados.map((producto: Producto) => (
+                    <div
+                      key={`producto_${producto.id}`}
+                      onClick={() => {
+                        agregarAlCarrito(producto);
+                        // Cambiar automáticamente al carrito después de agregar
+                        setActiveTab('carrito');
+                      }}
+                      className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors"
+                    >
+                      <div className="text-sm font-medium text-gray-900 mb-2">
+                        {producto.nombre}
+                      </div>
+                      <div className="text-lg font-bold text-green-600">
+                        {formatMoney(producto.precio_venta)}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Stock: <span className={`font-semibold ${producto.stock <= 5 ? 'text-red-600' : 'text-green-600'}`}>
+                          {producto.stock}
+                        </span> | IVA: {producto.iva}%
+                        {producto.stock <= 5 && (
+                          <span className="ml-2 text-red-600 font-medium">¡Últimas unidades!</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Controles de Paginación */}
+                {totalPaginas > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
+                      Página {paginaActual} de {totalPaginas} ({productosFiltrados.length} productos)
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={irAPaginaAnterior}
+                        disabled={paginaActual === 1}
+                        className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeftIcon className="w-4 h-4 mr-1" />
+                        Anterior
+                      </button>
+                      <button
+                        onClick={irAPaginaSiguiente}
+                        disabled={paginaActual === totalPaginas}
+                        className="flex items-center px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Siguiente
+                        <ChevronRightIcon className="w-4 h-4 ml-1" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Pestaña de Carrito */}
+          {activeTab === 'carrito' && (
+            <div className="flex-1 bg-gray-50 flex flex-col">
+              {/* Buscador de Clientes */}
+              <div className="bg-white p-4 border-b border-gray-200">
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente (nombre o cédula)..."
+                    value={busquedaCliente}
+                    onChange={(e) => setBusquedaCliente(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Lista de clientes filtrados */}
+                {busquedaCliente && (
+                  <div className="absolute z-50 w-full bg-white shadow-xl border border-gray-200 rounded-b-lg max-h-48 overflow-y-auto mt-1">
+                    {clientesFiltrados.map((cliente: Cliente) => (
+                      <div
+                        key={cliente.id}
+                        onClick={() => seleccionarCliente(cliente)}
+                        className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="font-medium text-gray-900">{cliente.nombre}</div>
+                        <div className="text-sm text-gray-500">Cédula: {cliente.cedula}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Lista del carrito */}
+              <div className="flex-1 p-4 overflow-y-auto pb-32">
+                {carrito.length === 0 ? (
+                  <div className="text-center text-gray-500 mt-8">
+                    <div className="text-lg mb-2">Carrito vacío</div>
+                    <div className="text-sm">Agrega productos para comenzar</div>
+                    <button
+                      onClick={() => setActiveTab('productos')}
+                      className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Ver Productos
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {carrito.map((item) => (
+                      <div key={item.id} className="bg-white rounded-lg p-4">
+                        <div className="flex flex-col space-y-3 w-full">
+                          <div className="flex items-start justify-between w-full">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900 break-words">
+                                {item.producto?.nombre}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {formatMoney(item.precio_unitario)} c/u
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => eliminarDelCarrito(item.id)}
+                              className="text-red-500 hover:text-red-700 flex-shrink-0 ml-2"
+                            >
+                              <TrashIcon className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                                className="p-1 rounded hover:bg-gray-200"
+                              >
+                                <MinusIcon className="w-4 h-4" />
+                              </button>
+                              <span className="w-8 text-center">{item.cantidad}</span>
+                              <button
+                                onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                                className="p-1 rounded hover:bg-gray-200"
+                              >
+                                <PlusIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="font-medium text-gray-900">
+                                {formatMoney(item.subtotal)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                IVA: {formatMoney(item.impuesto_item)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Panel de totales fijo en móvil */}
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{formatMoney(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Impuestos (IVA):</span>
+                    <span>{formatMoney(impuestos)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Descuentos:</span>
+                    <input
+                      type="number"
+                      value={descuentos}
+                      onChange={(e) => setDescuentos(parseFloat(e.target.value) || 0)}
+                      className="w-full text-right border border-gray-300 rounded px-2 py-1"
+                    />
+                  </div>
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total:</span>
+                    <span>{formatMoney(total)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowPagoModal(true)}
+                  disabled={!puedeCobrar}
+                  className="w-full bg-green-600 text-white py-4 text-lg rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Cobrar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal de Pago */}

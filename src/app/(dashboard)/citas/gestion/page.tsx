@@ -632,7 +632,7 @@ export default function GestionCitasPage() {
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
+              <div className="flex-1 w-full">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   <Input
@@ -640,15 +640,15 @@ export default function GestionCitasPage() {
                     placeholder="Buscar por cliente, empleado o servicio..."
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 w-full"
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-row overflow-x-auto gap-2 w-full pb-2 scrollbar-hide">
                 <Button
                   variant={filtroEstado === 'todos' ? 'primary' : 'outline'}
                   onClick={() => setFiltroEstado('todos')}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 whitespace-nowrap shrink-0"
                 >
                   <Filter className="w-4 h-4" />
                   Todos
@@ -656,28 +656,28 @@ export default function GestionCitasPage() {
                 <Button
                   variant={filtroEstado === 'pendiente' ? 'primary' : 'outline'}
                   onClick={() => setFiltroEstado('pendiente')}
-                  className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                  className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 whitespace-nowrap shrink-0"
                 >
                   Pendientes
                 </Button>
                 <Button
                   variant={filtroEstado === 'en_atencion' ? 'primary' : 'outline'}
                   onClick={() => setFiltroEstado('en_atencion')}
-                  className="bg-blue-100 text-blue-800 hover:bg-blue-200"
+                  className="bg-blue-100 text-blue-800 hover:bg-blue-200 whitespace-nowrap shrink-0"
                 >
                   En Atención
                 </Button>
                 <Button
                   variant={filtroEstado === 'completada' ? 'primary' : 'outline'}
                   onClick={() => setFiltroEstado('completada')}
-                  className="bg-green-100 text-green-800 hover:bg-green-200"
+                  className="bg-green-100 text-green-800 hover:bg-green-200 whitespace-nowrap shrink-0"
                 >
                   Completadas
                 </Button>
                 <Button
                   variant={filtroEstado === 'cancelada' || filtroEstado === 'anulada' ? 'primary' : 'outline'}
                   onClick={() => setFiltroEstado('anulada')}
-                  className="bg-red-100 text-red-800 hover:bg-red-200"
+                  className="bg-red-100 text-red-800 hover:bg-red-200 whitespace-nowrap shrink-0"
                 >
                   Anuladas
                 </Button>
@@ -687,9 +687,9 @@ export default function GestionCitasPage() {
         </Card>
 
         {/* Tabla de Citas */}
-        <Card>
+        <Card className="w-full overflow-hidden">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex flex-row justify-between items-center w-full">
               <span className="flex items-center gap-2">
                 Lista de Citas ({citasFiltradas.length})
               </span>

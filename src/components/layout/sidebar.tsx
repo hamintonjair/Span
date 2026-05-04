@@ -373,14 +373,13 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
 ];
 
 export default function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user } = useJWTAuth();
-  const { loading, ...permissions } = usePlanPermissions();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [emailSoporte, setEmailSoporte] = useState('contacto@span.com');
+  const pathname = usePathname();
   const { logout } = useJWTAuth();
+  const planPermissions = usePlanPermissions();
+  const [loading, setLoading] = useState(true);
   const [configGlobal, setConfigGlobal] = useState<ConfiguracionGlobal | null>(null);
 
   // Cargar email de soporte y configuración global
@@ -446,13 +445,14 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
             // Verificar si el item requiere permiso y si el usuario tiene acceso
             let itemHasPermission = true;
             if (item.requiresPermission && !loading) {
+              const perms = planPermissions as any;
               itemHasPermission = 
-                item.requiresPermission === 'inventory' ? permissions.canUseInventory :
-                item.requiresPermission === 'commissions' ? permissions.canUseCommissions :
-                item.requiresPermission === 'marketing' ? permissions.canUseMarketing :
-                item.requiresPermission === 'nominas' ? (permissions as any).canUseNominas :
-                item.requiresPermission === 'analytics' ? (permissions as any).canUseAnalytics :
-                item.requiresPermission === 'priority_support' ? (permissions as any).hasPrioritySupport :
+                item.requiresPermission === 'inventory' ? perms.canUseInventory :
+                item.requiresPermission === 'commissions' ? perms.canUseCommissions :
+                item.requiresPermission === 'marketing' ? perms.canUseMarketing :
+                item.requiresPermission === 'nominas' ? perms.canUseNominas :
+                item.requiresPermission === 'analytics' ? perms.canUseAnalytics :
+                item.requiresPermission === 'priority_support' ? perms.hasPrioritySupport :
                 false;
             }
 
@@ -484,8 +484,37 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
     );
   };
 
+  // Escuchar evento personalizado del header
+  useEffect(() => {
+    const handleOpenSidebar = () => {
+      setIsMobileOpen(true);
+    };
+
+    window.addEventListener('openMobileSidebar', handleOpenSidebar);
+    return () => {
+      window.removeEventListener('openMobileSidebar', handleOpenSidebar);
+    };
+  }, []);
+
   return (
-    <div className={`bg-gradient-to-b from-amber-900 to-amber-950 text-white transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'} min-h-screen flex flex-col`}>
+    <>
+      {/* Mobile Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden ${isMobileOpen ? 'block' : 'hidden'}`}
+        onClick={() => setIsMobileOpen(false)}
+      />
+      
+      {/* Sidebar */}
+      <div className={`
+        bg-gradient-to-b from-amber-900 to-amber-950 text-white 
+        transition-all duration-300 
+        min-h-screen flex flex-col
+        ${isCollapsed ? 'w-20' : 'w-64'}
+        ${isMobileOpen ? 'fixed inset-y-0 left-0 z-50 transform' : 'hidden md:block'}
+        ${isMobileOpen && !isCollapsed ? 'translate-x-0' : ''}
+        ${isMobileOpen && isCollapsed ? 'translate-x-0' : ''}
+        ${!isMobileOpen ? '-translate-x-full md:translate-x-0' : ''}
+      `}>
       {/* Header */}
       <div className="p-4 border-b border-amber-800">
         <div className="flex items-center justify-between">
@@ -521,23 +550,7 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
           renderSection('Menú', groupedItems.main || [])
         )}
         
-        {/* Botón de Escríbenos para empresas */}
-        {userRole !== 'admin_global' && userRole !== 'soporte' && userRole !== 'ventas' && (
-          <div className="mt-6 mb-4">
-            {!isCollapsed && (
-              <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider mb-2 px-3">
-                Contacto Directo
-              </h3>
-            )}
-            <a
-              href={`mailto:${emailSoporte}?subject=Soporte desde ${empresaNombre || 'mi empresa'}&body=Hola, necesito ayuda con...`}
-              className="flex items-center space-x-3 px-3 py-2 bg-amber-700 hover:bg-amber-600 rounded-lg transition-all duration-200 text-white"
-            >
-              <EnvelopeIcon className="w-5 h-5" />
-              {!isCollapsed && <span className="font-medium">Escríbenos</span>}
-            </a>
-          </div>
-        )}
+
       </nav>
 
       {/* User Info */}
@@ -564,5 +577,6 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
         )}
       </div>
     </div>
+    </>
   );
 }

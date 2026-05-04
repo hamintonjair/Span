@@ -652,7 +652,7 @@ export default function VentasPage() {
             size="lg"
           >
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium">Fecha:</span>
                   <p>{format(new Date(ventaSeleccionada.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
@@ -677,43 +677,46 @@ export default function VentasPage() {
 
               <div>
                 <h3 className="font-medium mb-2">Productos y Servicios</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left p-2">Item</th>
-                        <th className="text-left p-2">Cantidad</th>
-                        <th className="text-left p-2">Precio Unit.</th>
-                        <th className="text-left p-2">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detallesVenta.map((detalle) => (
-                        <tr key={detalle.id} className="border-b">
-                          <td className="p-2">
-                            <div>
-                              <p className="font-medium">
-                                {detalle.productos?.nombre || detalle.servicios?.nombre || 'Item'}
-                              </p>
-                              {detalle.productos?.sku && (
-                                <p className="text-xs text-gray-500">SKU: {detalle.productos.sku}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-2">{detalle.cantidad}</td>
-                          <td className="p-2">{formatMoney(detalle.precio_unitario)}</td>
-                          <td className="p-2 font-medium">{formatMoney(detalle.subtotal)}</td>
+                <div className="w-full overflow-x-auto">
+                  <div className="border rounded-lg overflow-hidden min-w-max">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left p-2 min-w-[200px]">Item</th>
+                          <th className="text-left p-2">Cantidad</th>
+                          <th className="text-left p-2">Precio Unit.</th>
+                          <th className="text-left p-2">Subtotal</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {detallesVenta.map((detalle) => (
+                          <tr key={detalle.id} className="border-b">
+                            <td className="p-2">
+                              <div>
+                                <p className="font-medium">
+                                  {detalle.productos?.nombre || detalle.servicios?.nombre || 'Item'}
+                                </p>
+                                {detalle.productos?.sku && (
+                                  <p className="text-xs text-gray-500">SKU: {detalle.productos.sku}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2">{detalle.cantidad}</td>
+                            <td className="p-2">{formatMoney(detalle.precio_unitario)}</td>
+                            <td className="p-2 font-medium">{formatMoney(detalle.subtotal)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-3 w-full pt-4 border-t">
                 <Button
                   variant="outline"
                   onClick={() => imprimirTicket(ventaSeleccionada)}
+                  className="w-full sm:w-auto"
                 >
                   <PrinterIcon className="w-4 h-4 mr-2" />
                   Imprimir Ticket
@@ -725,12 +728,13 @@ export default function VentasPage() {
                       setShowDetalleModal(false);
                       setShowAnulacionModal(true);
                     }}
+                    className="w-full sm:w-auto"
                   >
                     <XMarkIcon className="w-4 h-4 mr-2" />
                     Anular Venta
                   </Button>
                 )}
-                <Button onClick={() => setShowDetalleModal(false)}>
+                <Button onClick={() => setShowDetalleModal(false)} className="w-full sm:w-auto">
                   Cerrar
                 </Button>
               </div>

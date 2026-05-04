@@ -372,12 +372,12 @@ export default function CategoriasPage() {
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Gestión de Categorías</h1>
               <p className="text-gray-600 mt-2">Clasificación para servicios y productos</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-row items-center gap-2 w-full md:w-auto">
               <Button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-2"
@@ -411,14 +411,14 @@ export default function CategoriasPage() {
         </Card>
 
         {/* Tabla de Categorías */}
-        <Card>
+        <Card className="w-full max-w-full overflow-hidden">
           <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">
               Lista de Categorías ({filteredCategorias.length})
             </h2>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>

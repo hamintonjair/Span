@@ -10,7 +10,46 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import { BuildingOfficeIcon, CreditCardIcon, PhoneIcon, CheckCircleIcon, ExclamationTriangleIcon, CloudArrowDownIcon, ArrowPathIcon, TrashIcon, CloudArrowUpIcon, LockClosedIcon, DocumentArrowDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  HomeIcon,
+  UserGroupIcon,
+  CalendarIcon,
+  ShoppingCartIcon,
+  UserIcon,
+  CogIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
+  BuildingOfficeIcon,
+  ClipboardDocumentListIcon,
+  Bars3Icon,
+  XMarkIcon,
+  Cog6ToothIcon,
+  LockClosedIcon,
+  BellIcon,
+  TagIcon,
+  TruckIcon,
+  TableCellsIcon,
+  MegaphoneIcon, 
+  PresentationChartBarIcon,
+  ArrowRightOnRectangleIcon,
+  StarIcon,
+  QuestionMarkCircleIcon,
+  LifebuoyIcon,
+  BookOpenIcon,
+  EnvelopeIcon,
+  ScaleIcon,
+  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  CloudArrowDownIcon,
+  ArrowPathIcon,
+  TrashIcon,
+  CloudArrowUpIcon,
+  DocumentArrowDownIcon,
+  PhoneIcon,
+  CheckCircleIcon
+} from '@heroicons/react/24/outline';
 import {
   exportarSistemaMaestroAction,
   obtenerRespaldosSistemaMaestroAction,
@@ -258,7 +297,12 @@ export default function AdminConfiguracionPage() {
 
   // Función para restaurar respaldo con progreso en tiempo real
   const handleRestaurar = async () => {
-    if (!selectedRespaldo || !user?.id) return;
+    console.log('🔍 DEBUG: handleRestaurar llamado', { selectedRespaldo, user });
+    
+    if (!selectedRespaldo || !user?.id) {
+      console.error('❌ DEBUG: No hay respaldo seleccionado o usuario', { selectedRespaldo, user });
+      return;
+    }
 
     try {
       console.log('🔄 Iniciando restauración con progreso en tiempo real');
@@ -268,6 +312,7 @@ export default function AdminConfiguracionPage() {
       setSelectedRespaldo(null);
       
       // Iniciar restauración con progreso usando el hook
+      console.log('🔍 DEBUG: Llamando a restoreProgress.startRestore', { respaldoId: selectedRespaldo.id, userId: user.id });
       await restoreProgress.startRestore(selectedRespaldo.id, user.id);
       
     } catch (error) {
@@ -621,6 +666,11 @@ export default function AdminConfiguracionPage() {
       backupProgress.resetState(); // Resetear estado del hook
     }
   }, [backupProgress.isComplete, backupProgress.error, showToast]);
+
+  // Effect para monitorear cambios en el modal de restauración
+  useEffect(() => {
+    console.log('🔍 DEBUG: Cambios en modal restauración', { showRestoreModal, selectedRespaldo });
+  }, [showRestoreModal, selectedRespaldo]);
 
   // Effect para manejar eventos del hook de progreso de restauración
   useEffect(() => {
@@ -1452,8 +1502,11 @@ export default function AdminConfiguracionPage() {
                               <div className="relative group">
                                 <Button
                                   onClick={() => {
+                                    console.log('🔍 DEBUG: Botón restaurar clickeado', { respaldo, restoringBackup });
                                     setSelectedRespaldo(respaldo);
+                                    console.log('🔍 DEBUG: setSelectedRespaldo llamado', { respaldo });
                                     setShowRestoreModal(true);
+                                    console.log('🔍 DEBUG: setShowRestoreModal(true) llamado');
                                   }}
                                   disabled={restoringBackup}
                                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50"
@@ -1528,78 +1581,7 @@ export default function AdminConfiguracionPage() {
               >
                 {deletingRespaldo === selectedRespaldo.id ? 'Eliminando...' : 'Eliminar'}
               </Button>
-          </div>
-
-          {/* Modal de Confirmación de Eliminación */}
-          {showDeleteModal && selectedRespaldo && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Eliminar Respaldo</h3>
-                </div>
-                <p className="text-gray-600 mb-6">
-                  ¿Estás seguro de que deseas eliminar el respaldo "<span className="font-medium text-gray-800">{selectedRespaldo.nombre_archivo}</span>"?
-                  <br />
-                  <span className="text-sm text-gray-500">Esta acción no se puede deshacer. El respaldo será eliminado permanentemente.</span>
-                </p>
-                <div className="flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowDeleteModal(false);
-                      setSelectedRespaldo(null);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleEliminar}
-                    disabled={deletingRespaldo === selectedRespaldo.id}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    {deletingRespaldo === selectedRespaldo.id ? 'Eliminando...' : 'Eliminar'}
-                  </Button>
-                </div>
-              </div>
             </div>
-          )}
-
-          {/* Modal de Confirmación de Restauración */}
-          {showRestoreModal && selectedRespaldo && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <ArrowPathIcon className="w-6 h-6 text-green-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Restaurar Sistema</h3>
-                </div>
-                <p className="text-gray-600 mb-6">
-                  ¿Estás seguro de que deseas restaurar el sistema desde el respaldo "<span className="font-medium text-gray-800">{selectedRespaldo.nombre_archivo}</span>"?
-                  <br />
-                  <span className="text-sm text-gray-500">Esta acción sobrescribirá los datos actuales del sistema. Se recomienda crear un respaldo antes de continuar.</span>
-                </p>
-                <div className="flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowRestoreModal(false);
-                      setSelectedRespaldo(null);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleRestaurar}
-                    disabled={restoringRespaldo === selectedRespaldo.id}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {restoringRespaldo === selectedRespaldo.id ? 'Restaurando...' : 'Restaurar'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-    
-      )}
           </div>
         </div>
       )}
@@ -1712,6 +1694,149 @@ export default function AdminConfiguracionPage() {
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {editingFaqId ? 'Actualizar' : 'Agregar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    {/* Modal de Confirmación de Restauración - MEJORADO */}
+      {showRestoreModal && selectedRespaldo && (() => {
+        console.log('🔍 DEBUG: Modal renderizando FINAL', { showRestoreModal, selectedRespaldo });
+        return true;
+      })() && (
+        <div key={`restore-modal-${selectedRespaldo.id}`} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
+            {/* Header del Modal */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 rounded-t-xl border-b border-green-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white bg-opacity-20 rounded-lg">
+                  <ArrowPathIcon className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white">Restaurar Sistema</h3>
+                  <p className="text-green-100 text-sm mt-1">Confirmación de restauración</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowRestoreModal(false);
+                    setSelectedRespaldo(null);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="px-6 py-6">
+              {/* Alerta de Advertencia */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-amber-800 mb-2">⚠️ Acción Irreversible</h4>
+                    <p className="text-sm text-amber-700 leading-relaxed">
+                      Esta acción sobrescribirá completamente los datos actuales del sistema con la información del respaldo seleccionado.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información del Respaldo */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <CloudArrowDownIcon className="w-4 h-4 text-gray-600" />
+                  Información del Respaldo
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Archivo:</span>
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-[200px]" title={selectedRespaldo.nombre_archivo}>
+                      {selectedRespaldo.nombre_archivo}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fecha:</span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(selectedRespaldo.created_at).toLocaleDateString('es-CO', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Tipo:</span>
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                      Manual
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recomendación */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 bg-blue-100 rounded-full">
+                    <StarIcon className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-800 mb-1">💡 Recomendación</h4>
+                    <p className="text-sm text-blue-700 leading-relaxed">
+                      Antes de continuar, considera crear un respaldo actual del sistema para tener un punto de reversión adicional.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pregunta de Confirmación */}
+              <div className="text-center mb-6">
+                <p className="text-lg font-medium text-gray-900 mb-2">
+                  ¿Estás seguro de continuar con la restauración?
+                </p>
+                <p className="text-sm text-gray-600">
+                  Esta acción no se puede deshacer
+                </p>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRestoreModal(false);
+                    setSelectedRespaldo(null);
+                  }}
+                  className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <XMarkIcon className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => {
+                    console.log('🔍 DEBUG: Botón confirmar restauración clickeado FINAL', { selectedRespaldo, restoringRespaldo });
+                    handleRestaurar();
+                  }}
+                  disabled={restoringRespaldo === selectedRespaldo.id}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium"
+                >
+                  {restoringRespaldo === selectedRespaldo.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Restaurando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 mr-2" />
+                      Restaurar Sistema
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

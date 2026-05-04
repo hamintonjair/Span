@@ -75,7 +75,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   // Permitir renderizado para admin_global aunque empresa_id sea null
   return (
-    <div className="min-h-screen bg-amber-50 flex">
+    <div className="w-full max-w-[100vw] overflow-x-hidden min-h-screen bg-amber-50 flex">
       {/* Sidebar */}
       <Sidebar 
         userRole={user.rol as 'admin_global' | 'admin_empresa' | 'estilista' | 'recepcionista' | 'empleado'}
@@ -84,41 +84,59 @@ export function MainLayout({ children }: MainLayoutProps) {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
         {/* Top Bar */}
-        <header className="bg-white border-b border-amber-100 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <svg 
-                  width="28" 
-                  height="28" 
-                  viewBox="0 0 32 32" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="object-contain"
-                >
-                  <circle cx="16" cy="16" r="16" fill="#1f2937"/>
-                  <text x="8" y="20" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="white">AS</text>
-                  <rect x="20" y="14" width="8" height="1" fill="#3b82f6"/>
-                  <rect x="20" y="17" width="6" height="1" fill="#3b82f6"/>
-                  <rect x="20" y="20" width="4" height="1" fill="#3b82f6"/>
+        <header className="w-full max-w-full bg-white border-b border-amber-100 px-4 md:px-6 py-4">
+          <div className="flex items-center justify-between w-full max-w-full">
+            {/* Contenedor Izquierdo: Menú + Logo */}
+            <div className="flex items-center gap-3 md:gap-4">
+              {/* Botón hamburguesa móvil - ahora dentro del header */}
+              <button
+                onClick={() => {
+                  // Disparar evento para abrir el sidebar móvil
+                  const event = new CustomEvent('openMobileSidebar');
+                  window.dispatchEvent(event);
+                }}
+                className="md:hidden p-2 bg-amber-600 rounded-lg text-white shadow-lg hover:bg-amber-700 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {user.rol === 'admin_global' ? `${getNombreEmpresa()} Admin` : getNombreEmpresa()}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  {user.rol === 'admin_global' ? 'Panel de Administración Global' : `Sistema de Gestión de ${getNombreEmpresa()}`}
-                </p>
+              </button>
+              
+              {/* Logo y nombre de empresa */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg 
+                    width="28" 
+                    height="28" 
+                    viewBox="0 0 32 32" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="object-contain"
+                  >
+                    <circle cx="16" cy="16" r="16" fill="#1f2937"/>
+                    <text x="8" y="20" fontFamily="Arial, sans-serif" fontSize="12" fontWeight="bold" fill="white">AS</text>
+                    <rect x="20" y="14" width="8" height="1" fill="#3b82f6"/>
+                    <rect x="20" y="17" width="6" height="1" fill="#3b82f6"/>
+                    <rect x="20" y="20" width="4" height="1" fill="#3b82f6"/>
+                  </svg>
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 whitespace-normal">
+                    {user.rol === 'admin_global' ? `${getNombreEmpresa()} Admin` : getNombreEmpresa()}
+                  </h1>
+                  <p className="text-sm text-gray-600 hidden md:block whitespace-normal">
+                    {user.rol === 'admin_global' ? 'Panel de Administración Global' : `Sistema de Gestión de ${getNombreEmpresa()}`}
+                  </p>
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-gray-900">{user.nombre}</p>
-                <p className="text-xs text-gray-600 capitalize">
+                <p className="text-xs text-gray-600 capitalize hidden md:flex">
                   {user.rol === 'admin_global' ? 'Administrador Global' : user.rol.replace('_', ' ')}
                 </p>
               </div>
@@ -133,7 +151,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 bg-amber-50">
+        <main className="flex-1 w-full max-w-full overflow-x-hidden p-6 bg-amber-50">
           {children}
         </main>
       </div>

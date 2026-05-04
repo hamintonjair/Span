@@ -218,19 +218,19 @@ export default function ComunicacionPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="w-full max-w-[100vw] px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">📢 Comunicación</h1>
-          <p className="text-gray-600">Gestión de mensajes globales para todas las empresas</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 whitespace-normal">📢 Comunicación</h1>
+          <p className="text-gray-600 text-sm md:text-base whitespace-normal">Gestión de mensajes globales para todas las empresas</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           {/* Formulario de mensaje */}
-          <Card>
+          <Card className="w-full">
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Mensaje Global</h2>
-              <p className="text-gray-600">
+              <h2 className="text-xl font-semibold text-gray-900 whitespace-normal">Mensaje Global</h2>
+              <p className="text-gray-600 text-sm whitespace-normal">
                 Este mensaje se mostrará a todas las empresas en sus dashboards
               </p>
             </CardHeader>
@@ -250,16 +250,16 @@ export default function ComunicacionPage() {
                       value={mensaje}
                       onChange={(e) => setMensaje(e.target.value)}
                       rows={6}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                       placeholder="Escribe aquí el mensaje que se mostrará a todas las empresas..."
                     />
                   </div>
                   
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <Button
                       onClick={guardarMensaje}
                       disabled={guardando}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                     >
                       {guardando ? 'Guardando...' : '💾 Guardar Mensaje'}
                     </Button>
@@ -268,7 +268,7 @@ export default function ComunicacionPage() {
                       variant="outline"
                       onClick={limpiarMensaje}
                       disabled={guardando}
-                      className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      className="border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
                     >
                       🗑️ Limpiar
                     </Button>
@@ -279,10 +279,10 @@ export default function ComunicacionPage() {
           </Card>
 
           {/* Vista previa */}
-          <Card>
+          <Card className="w-full">
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Vista Previa</h2>
-              <p className="text-gray-600">
+              <h2 className="text-xl font-semibold text-gray-900 whitespace-normal">Vista Previa</h2>
+              <p className="text-gray-600 text-sm whitespace-normal">
                 Así verán las empresas el mensaje en su dashboard
               </p>
             </CardHeader>
@@ -327,7 +327,7 @@ export default function ComunicacionPage() {
               <h2 className="text-xl font-semibold text-gray-900">Impacto del Mensaje</h2>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                     <span className="text-2xl">🏢</span>

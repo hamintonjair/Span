@@ -173,19 +173,19 @@ export default async function AdminDashboardPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-[#fdfaf6] p-6">
+      <div className="min-h-screen bg-[#fdfaf6] px-4 sm:px-6 py-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             Dashboard Global
           </h1>
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-500 text-sm sm:text-lg hidden sm:block">
             Resumen de rendimiento y métricas de Span
           </p>
         </div>
 
         {/* Sección de Métricas - Tarjetas Superiores */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="flex flex-col gap-4 w-full sm:grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:gap-6 mb-8">
           
           {/* Ingresos Mensuales (MRR) */}
           <Card className="bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">

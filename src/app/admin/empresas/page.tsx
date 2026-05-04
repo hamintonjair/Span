@@ -433,16 +433,16 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="w-full max-w-[100vw] px-4 overflow-x-hidden space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gestión de Empresas</h1>
-            <p className="text-gray-600 mt-2">Administra el estado y planes de todas las empresas</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="w-full">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 whitespace-normal">Gestión de Empresas</h1>
+            <p className="text-gray-600 mt-2 text-sm md:text-base whitespace-normal">Administra el estado y planes de todas las empresas</p>
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
             {/* Campo de búsqueda */}
-            <div className="relative">
+            <div className="relative w-full md:w-auto">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
@@ -452,32 +452,34 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
                   setSearchTerm(e.target.value);
                   setItemOffset(0); // Resetear a primera página al buscar
                 }}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 w-full md:w-64"
               />
             </div>
             <Button
               onClick={() => openEmpresaModal()}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full md:w-auto"
             >
               <BuildingOfficeIcon className="w-4 h-4" />
               Nueva Empresa
             </Button>
-            <Badge variant="outline" className="px-3 py-2">
-              {filteredEmpresas.length} empresas totales
-            </Badge>
-            <Badge variant="outline" className="px-3 py-2 bg-green-50 text-green-700">
-              {filteredEmpresas.filter(e => e.estado === 'activo').length} activas
-            </Badge>
-            <Badge variant="outline" className="px-3 py-2 bg-red-50 text-red-700">
-              {filteredEmpresas.filter(e => e.estado === 'suspendido').length} suspendidas
-            </Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="px-3 py-2">
+                {filteredEmpresas.length} empresas totales
+              </Badge>
+              <Badge variant="outline" className="px-3 py-2 bg-green-50 text-green-700">
+                {filteredEmpresas.filter(e => e.estado === 'activo').length} activas
+              </Badge>
+              <Badge variant="outline" className="px-3 py-2 bg-red-50 text-red-700">
+                {filteredEmpresas.filter(e => e.estado === 'suspendido').length} suspendidas
+              </Badge>
+            </div>
           </div>
         </div>
 
         {/* Lista de Empresas */}
         <div className="space-y-4">
           {currentEmpresas.map((empresa) => (
-            <Card key={empresa.id} className="hover:shadow-lg transition-shadow">
+            <Card key={empresa.id} className="hover:shadow-lg transition-shadow w-full">
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   
@@ -580,7 +582,7 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
                 </div>
 
                 {/* Acciones */}
-                <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
+                <div className="flex flex-wrap gap-2 w-full justify-start mt-4 pt-4 border-t border-gray-200">
                   <Button
                     variant="outline"
                     size="sm"
@@ -644,7 +646,7 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
         {/* Paginación - Mostrar siempre para debug */}
         {pageCount > 0 && (
-          <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200 gap-4">
             <div className="text-sm text-gray-700">
               Mostrando {itemOffset + 1} a {Math.min(endOffset + 1, filteredEmpresas.length)} de {filteredEmpresas.length} resultados
               <br />
@@ -678,8 +680,8 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
         {/* Modal Nueva Empresa */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="w-full max-w-md mx-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-lg">
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Nueva Empresa</h3>
@@ -752,8 +754,8 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
         {/* Modal Unificado de Empresa (Crear/Editar) */}
         {showEmpresaModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="w-full max-w-lg">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg">
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-semibold text-gray-900">
@@ -794,18 +796,19 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full">
                       <input
                         type="text"
                         value={empresaModalData.password}
                         onChange={(e) => setEmpresaModalData({ ...empresaModalData, password: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder={editingEmpresaInModal ? "Dejar vacío para mantener actual" : "Mínimo 6 caracteres"}
                       />
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
                           let password = '';
@@ -988,8 +991,8 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
         {/* Modal de Vista */}
         {showViewModal && viewingEmpresa && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="w-full max-w-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <Card className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg">
               <CardContent className="p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-semibold text-gray-900">Detalles de Empresa</h2>
@@ -1004,7 +1007,7 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
 
                 <div className="space-y-6">
                   {/* Información Principal */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la Empresa</label>
                       <p className="text-lg font-semibold text-gray-900">{viewingEmpresa.nombre}</p>
@@ -1077,17 +1080,17 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
                   <div className="border-t pt-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Estadísticas</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="bg-blue-50 p-4 rounded-lg w-full">
                         <p className="text-sm text-blue-600 font-medium">Total Empleados</p>
                         <p className="text-2xl font-bold text-blue-900">{viewingEmpresa.cantidad_empleados || 0}</p>
                       </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="bg-green-50 p-4 rounded-lg w-full">
                         <p className="text-sm text-green-600 font-medium">Disponibles</p>
                         <p className="text-2xl font-bold text-green-900">
                           {Math.max(0, (viewingEmpresa.max_empleados || 0) - (viewingEmpresa.cantidad_empleados || 0))}
                         </p>
                       </div>
-                      <div className="bg-amber-50 p-4 rounded-lg">
+                      <div className="bg-amber-50 p-4 rounded-lg w-full">
                         <p className="text-sm text-amber-600 font-medium">Ocupación</p>
                         <p className="text-2xl font-bold text-amber-900">
                           {viewingEmpresa.max_empleados && viewingEmpresa.max_empleados > 0 

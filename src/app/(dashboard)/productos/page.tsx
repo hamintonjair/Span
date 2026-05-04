@@ -435,12 +435,12 @@ export default function ProductosPage() {
           </div>
         ))}
 
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gestión de Productos</h1>
             <p className="text-gray-600">Administra el inventario de productos del salón</p>
           </div>
-          <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
+          <Button onClick={() => setShowModal(true)} className="flex items-center gap-2 w-full sm:w-auto">
             <PlusIcon className="w-5 h-5" />
             Nuevo Producto
           </Button>
@@ -449,13 +449,13 @@ export default function ProductosPage() {
         {/* Filtros Rápidos por Tipo */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+              <div className="flex overflow-x-auto gap-2 w-full pb-2 scrollbar-hide">
                 <Button
                   variant={tipoFilter === 'todos' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setTipoFilter('todos')}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 whitespace-nowrap shrink-0"
                 >
                   <CubeIcon className="w-4 h-4" />
                   Todos
@@ -464,7 +464,7 @@ export default function ProductosPage() {
                   variant={tipoFilter === 'venta' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setTipoFilter('venta')}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 whitespace-nowrap shrink-0"
                 >
                   <ShoppingBagIcon className="w-4 h-4" />
                   Para Venta
@@ -473,21 +473,21 @@ export default function ProductosPage() {
                   variant={tipoFilter === 'insumo' ? 'primary' : 'outline'}
                   size="sm"
                   onClick={() => setTipoFilter('insumo')}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 whitespace-nowrap shrink-0"
                 >
                   <TagIcon className="w-4 h-4" />
                   Insumos
                 </Button>
               </div>
               
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Buscar producto..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="pl-10 w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-10 w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -495,7 +495,7 @@ export default function ProductosPage() {
         </Card>
 
         {/* Tabla de Productos */}
-        <Card>
+        <Card className="w-full max-w-full overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -592,8 +592,8 @@ export default function ProductosPage() {
               </table>
             </div>
             <div className="px-6 py-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full p-4">
+                <div className="text-sm text-gray-700 text-center sm:text-left">
                   Mostrando {itemOffset + 1} a {Math.min(endOffset + 1, totalCount)} de {totalCount} resultados
                 </div>
                 <div className="flex items-center space-x-2">

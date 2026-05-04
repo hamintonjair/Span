@@ -498,46 +498,48 @@ export default function SuscripcionesPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-[#fdfaf6] p-6">
+      <div className="w-full max-w-[100vw] px-4 md:px-6 min-h-screen bg-[#fdfaf6]">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Gestión de Suscripciones</h1>
-            <p className="text-gray-600">Administra los pagos y el estado de los salones</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 whitespace-normal">Gestión de Suscripciones</h1>
+            <p className="text-gray-600 text-sm md:text-base whitespace-normal">Administra los pagos y el estado de los salones</p>
           </div>
 
           {/* Pestañas estilo píldoras */}
-          <div className="bg-gray-100 p-1 rounded-lg mb-6 inline-flex">
-            <button
-              onClick={() => setActiveTab('pagos')}
-              className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
-                activeTab === 'pagos'
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Pagos Pendientes
-            </button>
-            <button
-              onClick={() => setActiveTab('salones')}
-              className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
-                activeTab === 'salones'
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Estado de Salones
-            </button>
-            <button
-              onClick={() => setActiveTab('historial')}
-              className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
-                activeTab === 'historial'
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Historial de Pagos
-            </button>
+          <div className="bg-gray-100 p-1 rounded-lg mb-6 w-full overflow-x-auto">
+            <div className="inline-flex min-w-max">
+              <button
+                onClick={() => setActiveTab('pagos')}
+                className={`px-4 md:px-6 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  activeTab === 'pagos'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Pagos Pendientes
+              </button>
+              <button
+                onClick={() => setActiveTab('salones')}
+                className={`px-4 md:px-6 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  activeTab === 'salones'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Estado de Salones
+              </button>
+              <button
+                onClick={() => setActiveTab('historial')}
+                className={`px-4 md:px-6 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  activeTab === 'historial'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Historial de Pagos
+              </button>
+            </div>
           </div>
 
           {/* Tab Content */}
@@ -561,7 +563,7 @@ export default function SuscripcionesPage() {
                         <div className="flex items-center space-x-3">
                           <BuildingOfficeIcon className="w-5 h-5 text-gray-400" />
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">
+                            <h3 className="font-semibold text-gray-900 whitespace-normal">
                               {getNombreEmpresa(comprobante, empresas)}
                             </h3>
                             <p className="text-sm text-gray-500">{formatearFecha(comprobante.fecha_envio)}</p>
@@ -626,10 +628,10 @@ export default function SuscripcionesPage() {
           {activeTab === 'salones' && (
             <>
               {/* Filtro de búsqueda */}
-              <Card className="mb-6">
+              <Card className="mb-6 w-full">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="relative flex-1">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:flex-1">
                       <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                       <input
                         type="text"
@@ -639,7 +641,7 @@ export default function SuscripcionesPage() {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    <span className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-gray-50">
+                    <span className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-gray-50 whitespace-nowrap">
                       {filteredEmpresas.length} salones
                     </span>
                   </div>
@@ -656,8 +658,8 @@ export default function SuscripcionesPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -776,8 +778,8 @@ export default function SuscripcionesPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">

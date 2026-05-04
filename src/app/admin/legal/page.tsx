@@ -164,18 +164,20 @@ export default function LegalAdminPage() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <a href="/admin" className="text-gray-500 hover:text-gray-700">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between h-auto md:h-16 py-4 gap-4">
+            <div className="flex items-center space-x-4 w-full">
+              <a href="/admin" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
                 <ArrowLeftIcon className="w-5 h-5" />
               </a>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Páginas Legales
-              </h1>
+              <div className="w-full">
+                <h1 className="text-xl md:text-2xl font-semibold text-gray-900 whitespace-normal">
+                  Páginas Legales
+                </h1>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <DocumentTextIcon className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-500">
+            <div className="flex items-center space-x-2 w-full md:w-auto">
+              <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-500 whitespace-normal">
                 Administración de contenido legal
               </span>
             </div>
@@ -185,9 +187,9 @@ export default function LegalAdminPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="flex flex-col lg:flex-row gap-6 w-full">
           {/* Sidebar - Selector de Página */}
-          <div className="lg:col-span-1">
+          <div className="w-full lg:w-1/3 flex-shrink-0">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
                 Seleccionar Página
@@ -228,27 +230,27 @@ export default function LegalAdminPage() {
           </div>
 
           {/* Editor de Contenido */}
-          <div className="lg:col-span-2">
+          <div className="w-full lg:w-2/3 flex-1 min-w-0">
             <div className="bg-white rounded-lg shadow">
               {/* Header del Editor */}
-              <div className="border-b px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="border-b px-4 md:px-6 py-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
+                  <div className="w-full sm:w-auto flex-1 min-w-0">
                     <input
                       type="text"
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
-                      className="text-xl font-semibold text-gray-900 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                      className="text-xl font-semibold text-gray-900 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 w-full"
                       placeholder="Título de la página"
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1 whitespace-normal">
                       {paginaActual?.slug === 'privacidad' ? 'Política de Privacidad' : 'Términos y Condiciones'}
                     </p>
                   </div>
                   <button
                     onClick={guardarCambios}
                     disabled={saving || loading}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto ${
                       saving || loading
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -290,7 +292,7 @@ export default function LegalAdminPage() {
                         value={contenido}
                         onChange={(e) => setContenido(e.target.value)}
                         rows={20}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors font-mono text-sm"
+                        className="w-full max-w-full overflow-x-hidden px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors font-mono text-sm"
                         placeholder="Escribe el contenido de la página legal aquí..."
                       />
                     </div>

@@ -416,7 +416,7 @@ export default function SoportePage() {
         )}
 
         {/* Buscador */}
-        <div className="mb-6">
+        <div className="w-full mb-6">
           <input
             type="text"
             placeholder="Buscar por asunto, empresa o creador..."
@@ -428,9 +428,9 @@ export default function SoportePage() {
 
         {/* Pestañas de navegación */}
         {user && (
-          <div className="mb-6">
+          <div className="w-full mb-6">
             <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
+              <nav className="w-full flex overflow-x-auto flex-nowrap space-x-8">
                 {user.rol === 'admin_global' ? (
                   <>
                     <button
@@ -502,8 +502,8 @@ export default function SoportePage() {
           ) : (
             <>
               {/* Tabla de tickets */}
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-max divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
