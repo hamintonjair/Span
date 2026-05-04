@@ -147,7 +147,7 @@ export default function LandingPage() {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('configuracion_global')
-          .select('titular')
+          .select('titular, nombre_titular, email_soporte')
           .single();
 
         if (error) {
@@ -169,6 +169,16 @@ export default function LandingPage() {
   // Función para obtener el nombre de la empresa
   const getNombreEmpresa = () => {
     return configGlobal?.titular;
+  };
+
+  // Función para obtener nombre del titular
+  const getNombreTitular = () => {
+    return configGlobal?.nombre_titular || configGlobal?.titular || 'Span';
+  };
+
+  // Función para obtener email de soporte
+  const getEmailSoporte = () => {
+    return configGlobal?.email_soporte || 'contacto@span.com';
   };
 
   // Función para formatear precio
@@ -320,6 +330,13 @@ export default function LandingPage() {
                 className="text-slate-600 hover:text-indigo-600 transition-colors font-medium"
               >
                 Planes
+              </Link>
+              <Link 
+                href="/contacto" 
+                className="text-slate-600 hover:text-indigo-600 transition-colors font-medium flex items-center space-x-1"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Contacto</span>
               </Link>
               <Link 
                 href="/login" 
@@ -1062,18 +1079,24 @@ export default function LandingPage() {
               Software de gestión empresarial moderno y eficiente
             </p>
             <div className="flex justify-center space-x-6 text-sm text-slate-400">
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/privacidad" className="hover:text-white transition-colors">
                 Privacidad
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/terminos" className="hover:text-white transition-colors">
                 Términos
               </Link>
-              <Link href="#" className="hover:text-white transition-colors">
+              <Link href="/contacto" className="hover:text-white transition-colors">
                 Contacto
               </Link>
+              <a 
+                href={`mailto:${getEmailSoporte()}`}
+                className="hover:text-white transition-colors"
+              >
+                {getEmailSoporte()}
+              </a>
             </div>
             <div className="mt-6 text-sm text-slate-500">
-              © 2024 {getNombreEmpresa()}. Todos los derechos reservados.
+              © 2024 {getNombreEmpresa()}. Desarrollado por {getNombreTitular()}
             </div>
           </div>
         </div>

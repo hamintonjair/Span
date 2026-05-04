@@ -27,15 +27,27 @@ interface ConfiguracionGlobal {
   tipo_cuenta: string;
   numero_cuenta: string;
   titular: string;
+  nombre_titular: string;
   documento_titular: string;
   porcentaje_iva: string;
   whatsapp_soporte: string;
+  email_soporte: string;
   mensaje_global: string;
   direccion: string;
   ciudad: string;
   logo_url: string;
+  horario_semana: string;
+  horario_sabado: string;
+  horario_domingo: string;
+  faq_items: string; // JSON string
   creado_en?: string;
   actualizado_en?: string;
+}
+
+interface FAQItem {
+  id: string;
+  pregunta: string;
+  respuesta: string;
 }
 
 export default function AdminConfiguracionPage() {
@@ -53,13 +65,19 @@ export default function AdminConfiguracionPage() {
     tipo_cuenta: '',
     numero_cuenta: '',
     titular: '',
+    nombre_titular: '',
     documento_titular: '',
     porcentaje_iva: '',
     whatsapp_soporte: '',
+    email_soporte: '',
     mensaje_global: '',
     direccion: '',
     ciudad: '',
-    logo_url: ''
+    logo_url: '',
+    horario_semana: '',
+    horario_sabado: '',
+    horario_domingo: '',
+    faq_items: '[]'
   });
 
   const [loading, setLoading] = useState(true);
@@ -87,6 +105,16 @@ export default function AdminConfiguracionPage() {
     fileName: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados para gestión de FAQ
+  const [faqItems, setFaqItems] = useState<FAQItem[]>([]);
+  const [newFaqItem, setNewFaqItem] = useState<FAQItem>({
+    id: '',
+    pregunta: '',
+    respuesta: ''
+  });
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+  const [showFaqModal, setShowFaqModal] = useState(false);
 
   // Función para cargar respaldos del sistema maestro
   const cargarRespaldos = async () => {
@@ -451,6 +479,78 @@ export default function AdminConfiguracionPage() {
     setFileRestoreModal({ isOpen: false, backupData: null, fileName: '' });
   };
 
+  // Funciones para gestión de FAQ
+  const loadFaqItems = () => {
+    try {
+      const items = JSON.parse(config.faq_items || '[]');
+      setFaqItems(items);
+    } catch (error) {
+      console.error('Error cargando FAQ items:', error);
+      setFaqItems([]);
+    }
+  };
+
+  const addFaqItem = () => {
+    if (!newFaqItem.pregunta || !newFaqItem.respuesta) {
+      showToast('Por favor, completa todos los campos', 'error');
+      return;
+    }
+
+    const item: FAQItem = {
+      id: editingFaqId || Date.now().toString(),
+      pregunta: newFaqItem.pregunta,
+      respuesta: newFaqItem.respuesta
+    };
+
+    let updatedItems: FAQItem[];
+    if (editingFaqId) {
+      updatedItems = faqItems.map(existingItem => existingItem.id === editingFaqId ? item : existingItem);
+    } else {
+      updatedItems = [...faqItems, item];
+    }
+
+    setFaqItems(updatedItems);
+    setConfig(prev => ({
+      ...prev,
+      faq_items: JSON.stringify(updatedItems)
+    }));
+
+    // Resetear formulario
+    setNewFaqItem({ id: '', pregunta: '', respuesta: '' });
+    setEditingFaqId(null);
+    setShowFaqModal(false);
+    
+    showToast(editingFaqId ? 'Pregunta actualizada' : 'Pregunta agregada', 'success');
+  };
+
+  const editFaqItem = (item: FAQItem) => {
+    setNewFaqItem(item);
+    setEditingFaqId(item.id);
+    setShowFaqModal(true);
+  };
+
+  const deleteFaqItem = (id: string) => {
+    const updatedItems = faqItems.filter(item => item.id !== id);
+    setFaqItems(updatedItems);
+    setConfig(prev => ({
+      ...prev,
+      faq_items: JSON.stringify(updatedItems)
+    }));
+    showToast('Pregunta eliminada', 'success');
+  };
+
+  const openFaqModal = () => {
+    setNewFaqItem({ id: '', pregunta: '', respuesta: '' });
+    setEditingFaqId(null);
+    setShowFaqModal(true);
+  };
+
+  const closeFaqModal = () => {
+    setNewFaqItem({ id: '', pregunta: '', respuesta: '' });
+    setEditingFaqId(null);
+    setShowFaqModal(false);
+  };
+
   // Cargar respaldos al montar el componente
   useEffect(() => {
     if (user && user.rol === 'admin_global') {
@@ -498,6 +598,13 @@ export default function AdminConfiguracionPage() {
 
     loadConfig();
   }, [user]);
+
+  // Cargar FAQ items cuando la configuración se carga
+  useEffect(() => {
+    if (config.faq_items) {
+      loadFaqItems();
+    }
+  }, [config.faq_items]);
 
   // Effect para manejar eventos del hook de progreso de respaldos
   useEffect(() => {
@@ -791,6 +898,23 @@ export default function AdminConfiguracionPage() {
                 </div>
                 
                 <div>
+                  <label htmlFor="nombre_titular" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre del Titular o Representante
+                  </label>
+                  <input
+                    id="nombre_titular"
+                    type="text"
+                    value={config.nombre_titular}
+                    onChange={(e) => handleInputChange('nombre_titular', e.target.value)}
+                    placeholder="Ej: Juan Pérez García"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Este nombre se usará para firmar correos automáticos y documentos legales
+                  </p>
+                </div>
+                
+                <div>
                   <label htmlFor="whatsapp_soporte" className="block text-sm font-medium text-gray-700 mb-2">
                     WhatsApp de Soporte
                   </label>
@@ -805,6 +929,20 @@ export default function AdminConfiguracionPage() {
                 </div>
                 
                 <div>
+                  <label htmlFor="email_soporte" className="block text-sm font-medium text-gray-700 mb-2">
+                    Correo Electrónico de Soporte
+                  </label>
+                  <input
+                    id="email_soporte"
+                    type="email"
+                    value={config.email_soporte}
+                    onChange={(e) => handleInputChange('email_soporte', e.target.value)}
+                    placeholder="Ej: soporte@span.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
                   <label htmlFor="direccion" className="block text-sm font-medium text-gray-700 mb-2">
                     Dirección
                   </label>
@@ -814,20 +952,6 @@ export default function AdminConfiguracionPage() {
                     value={config.direccion}
                     onChange={(e) => handleInputChange('direccion', e.target.value)}
                     placeholder="Ej: Calle 123 #45-67"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="ciudad" className="block text-sm font-medium text-gray-700 mb-2">
-                    Ciudad
-                  </label>
-                  <input
-                    id="ciudad"
-                    type="text"
-                    value={config.ciudad}
-                    onChange={(e) => handleInputChange('ciudad', e.target.value)}
-                    placeholder="Ej: Quibdó"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -861,6 +985,54 @@ export default function AdminConfiguracionPage() {
                 </div>
               </div>
 
+              {/* Campos de Horarios */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-medium text-gray-900">Horario de Atención</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label htmlFor="horario_semana" className="block text-sm font-medium text-gray-700 mb-2">
+                      Lunes - Viernes
+                    </label>
+                    <input
+                      id="horario_semana"
+                      type="text"
+                      value={config.horario_semana}
+                      onChange={(e) => handleInputChange('horario_semana', e.target.value)}
+                      placeholder="Ej: 9:00 AM - 6:00 PM"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="horario_sabado" className="block text-sm font-medium text-gray-700 mb-2">
+                      Sábados
+                    </label>
+                    <input
+                      id="horario_sabado"
+                      type="text"
+                      value={config.horario_sabado}
+                      onChange={(e) => handleInputChange('horario_sabado', e.target.value)}
+                      placeholder="Ej: 10:00 AM - 2:00 PM"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="horario_domingo" className="block text-sm font-medium text-gray-700 mb-2">
+                      Domingos
+                    </label>
+                    <input
+                      id="horario_domingo"
+                      type="text"
+                      value={config.horario_domingo}
+                      onChange={(e) => handleInputChange('horario_domingo', e.target.value)}
+                      placeholder="Ej: Cerrado"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div>
                   <label htmlFor="mensaje_global" className="block text-sm font-medium text-gray-700 mb-2">
@@ -875,6 +1047,71 @@ export default function AdminConfiguracionPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+
+              {/* Sección de Preguntas Frecuentes */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">Preguntas Frecuentes (FAQ)</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={openFaqModal}
+                    className="flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Agregar Pregunta
+                  </Button>
+                </div>
+                
+                {faqItems.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p className="text-gray-500">No hay preguntas frecuentes configuradas</p>
+                    <p className="text-sm text-gray-400 mt-1">Agrega preguntas para ayudar a tus clientes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {faqItems.map((item, index) => (
+                      <div key={item.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                              <h4 className="font-medium text-gray-900">{item.pregunta}</h4>
+                            </div>
+                            <p className="text-gray-600 text-sm">{item.respuesta}</p>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => editFaqItem(item)}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteFaqItem(item.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-4 pt-6 border-t">
@@ -1291,78 +1528,192 @@ export default function AdminConfiguracionPage() {
               >
                 {deletingRespaldo === selectedRespaldo.id ? 'Eliminando...' : 'Eliminar'}
               </Button>
+          </div>
+
+          {/* Modal de Confirmación de Eliminación */}
+          {showDeleteModal && selectedRespaldo && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Eliminar Respaldo</h3>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  ¿Estás seguro de que deseas eliminar el respaldo "<span className="font-medium text-gray-800">{selectedRespaldo.nombre_archivo}</span>"?
+                  <br />
+                  <span className="text-sm text-gray-500">Esta acción no se puede deshacer. El respaldo será eliminado permanentemente.</span>
+                </p>
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setSelectedRespaldo(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleEliminar}
+                    disabled={deletingRespaldo === selectedRespaldo.id}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {deletingRespaldo === selectedRespaldo.id ? 'Eliminando...' : 'Eliminar'}
+                  </Button>
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* Modal de Confirmación de Restauración */}
+          {showRestoreModal && selectedRespaldo && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <ArrowPathIcon className="w-6 h-6 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Restaurar Sistema</h3>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  ¿Estás seguro de que deseas restaurar el sistema desde el respaldo "<span className="font-medium text-gray-800">{selectedRespaldo.nombre_archivo}</span>"?
+                  <br />
+                  <span className="text-sm text-gray-500">Esta acción sobrescribirá los datos actuales del sistema. Se recomienda crear un respaldo antes de continuar.</span>
+                </p>
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowRestoreModal(false);
+                      setSelectedRespaldo(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleRestaurar}
+                    disabled={restoringRespaldo === selectedRespaldo.id}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {restoringRespaldo === selectedRespaldo.id ? 'Restaurando...' : 'Restaurar'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+    
+      )}
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmación de Restauración */}
-      {showRestoreModal && selectedRespaldo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <ArrowPathIcon className="w-6 h-6 text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Restaurar Sistema</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              ¿Estás seguro de que deseas restaurar el sistema desde el respaldo "<span className="font-medium text-gray-800">{selectedRespaldo.nombre_archivo}</span>"?
-              <br />
-              <span className="text-sm text-gray-500">Esta acción sobrescribirá los datos actuales del sistema. Se recomienda crear un respaldo antes de continuar.</span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowRestoreModal(false);
-                  setSelectedRespaldo(null);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleRestaurar}
-                disabled={restoringRespaldo === selectedRespaldo.id}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                {restoringRespaldo === selectedRespaldo.id ? 'Restaurando...' : 'Restaurar'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Confirmación de Restauración desde Archivo Externo */}
+      {/* Modal de Restauración desde Archivo */}
       {fileRestoreModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#1c130d] border border-green-700 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <CloudArrowUpIcon className="w-6 h-6 text-green-500 mr-3" />
-              <h3 className="text-lg font-semibold text-amber-100">
-                Confirmar Restauración desde Archivo
-              </h3>
-            </div>
-
-            <p className="text-amber-200 mb-6">
-              ¿Estás seguro de restaurar el archivo "<span className="font-medium text-amber-100">{fileRestoreModal.fileName}</span>"?
-            </p>
-
-            <p className="text-amber-300 text-sm mb-6">
-              Se sobrescribirán todos los datos actuales del sistema con la información de este archivo externo. Esta acción no se puede deshacer.
-            </p>
-
-            <div className="flex gap-3 justify-end">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <CloudArrowUpIcon className="w-6 h-6 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Restaurar desde Archivo</h3>
+              </div>
               <Button
+                variant="outline"
+                size="sm"
                 onClick={cancelFileRestore}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                Cancelar
+                <XMarkIcon className="w-4 h-4" />
               </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Archivo seleccionado:</strong> {fileRestoreModal.fileName}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Se restaurarán las tablas globales y datos del sistema desde este archivo
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={cancelFileRestore}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={confirmFileRestore}
+                  disabled={restoringBackup}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {restoringBackup ? 'Restaurando...' : 'Restaurar Sistema'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Agregar/Editar Pregunta Frecuente */}
+      {showFaqModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingFaqId ? 'Editar Pregunta' : 'Agregar Pregunta'}
+              </h3>
               <Button
-                onClick={confirmFileRestore}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                variant="outline"
+                size="sm"
+                onClick={closeFaqModal}
               >
-                Restaurar
+                <XMarkIcon className="w-4 h-4" />
               </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="faq_pregunta" className="block text-sm font-medium text-gray-700 mb-2">
+                  Pregunta *
+                </label>
+                <input
+                  id="faq_pregunta"
+                  type="text"
+                  value={newFaqItem.pregunta}
+                  onChange={(e) => setNewFaqItem(prev => ({ ...prev, pregunta: e.target.value }))}
+                  placeholder="Ej: ¿Cómo puedo realizar un pago?"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="faq_respuesta" className="block text-sm font-medium text-gray-700 mb-2">
+                  Respuesta *
+                </label>
+                <textarea
+                  id="faq_respuesta"
+                  value={newFaqItem.respuesta}
+                  onChange={(e) => setNewFaqItem(prev => ({ ...prev, respuesta: e.target.value }))}
+                  placeholder="Ej: Puedes realizar pagos a través de transferencia bancaria, tarjeta de crédito o en efectivo en nuestras sucursales."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={closeFaqModal}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={addFaqItem}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {editingFaqId ? 'Actualizar' : 'Agregar'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

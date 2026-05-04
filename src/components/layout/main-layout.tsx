@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sidebar } from './sidebar';
+import Sidebar from './sidebar';
 import { useJWTAuth } from '@/hooks/use-jwt-auth';
 import { useCancelacionAutomatica } from '@/hooks/use-cancelacion-automatica';
 import { useSuspensionAutomatica } from '@/hooks/use-suspension-automatica';

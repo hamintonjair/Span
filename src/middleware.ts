@@ -15,18 +15,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. Rutas públicas (Landing Page, login, registro y recuperación de contraseña)
-  const publicRoutes = ['/', '/login', '/registro', '/forgot-password', '/reset-password']
+  const publicRoutes = ['/', '/login', '/registro', '/forgot-password', '/reset-password', '/contacto', '/privacidad', '/terminos']
   const isPublicRoute = publicRoutes.includes(pathname)
 
-  // 3. Redirección de cortesía: si usuario está logueado y va a rutas públicas
+  // 3. Redirección de cortesía: si usuario está logueado y va a rutas públicas (excepto páginas legales)
   const token = request.cookies.get('auth-token')?.value
   
-  if (token && isPublicRoute) {
+  // Permitir acceso a páginas legales incluso para usuarios logueados
+  const legalRoutes = ['/contacto', '/privacidad', '/terminos']
+  const isLegalRoute = legalRoutes.includes(pathname)
+  
+  if (token && isPublicRoute && !isLegalRoute) {
     try {
       const payload = await verifyJWT(token)
       
       if (payload) {
-        // Usuario logueado válido, redirigir al dashboard según rol
+        // Usuario logueado válido, redirigir al dashboard según rol (excepto para páginas legales)
         const dashboardUrl = (payload.rol === 'admin_global' || payload.rol === 'soporte' || payload.rol === 'ventas') ? '/admin/dashboard-admin' : '/dashboard-empresa'
         return NextResponse.redirect(new URL(dashboardUrl, request.url))
       }

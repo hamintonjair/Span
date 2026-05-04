@@ -33,7 +33,10 @@ import {
   StarIcon,
   QuestionMarkCircleIcon,
   LifebuoyIcon,
-  BookOpenIcon
+  BookOpenIcon,
+  EnvelopeIcon,
+  ScaleIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -43,6 +46,11 @@ interface SidebarItem {
   roles: string[];
   section?: 'main' | 'saas' | 'platform';
   requiresPermission?: 'inventory' | 'commissions' | 'marketing' | 'analytics' | 'nominas' | 'priority_support';
+}
+
+interface ConfiguracionGlobal {
+  email_soporte: string;
+  titular: string;
 }
 
 interface SidebarProps {
@@ -275,6 +283,22 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     requiresPermission: 'priority_support'
   },
 
+  // Configuración Global (solo admin_global)
+  {
+    title: 'Páginas Legales',
+    href: '/admin/legal',
+    icon: <ScaleIcon className="w-5 h-5" />,
+    roles: ['admin_global'],
+    section: 'platform'
+  },
+  {
+    title: 'Mensajes de Contacto',
+    href: '/admin/contactos',
+    icon: <EnvelopeIcon className="w-5 h-5" />,
+    roles: ['admin_global'],
+    section: 'platform'
+  },
+
   // Mi Plataforma (admin_global y admin_empresa)
   {
     title: 'Ayuda',
@@ -305,6 +329,27 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'platform'
   },
   {
+    title: 'Términos y Condiciones',
+    href: '/terminos',
+    icon: <ScaleIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    section: 'platform'
+  },
+  {
+    title: 'Política de Privacidad',
+    href: '/privacidad',
+    icon: <ShieldCheckIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    section: 'platform'
+  },
+  {
+    title: 'Contacto y Soporte',
+    href: '/contacto',
+    icon: <EnvelopeIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista', 'empleado'],
+    section: 'platform'
+  },
+  {
     title: 'Configuración',
     href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/configuracion' : '/configuracion',
     icon: <CogIcon className="w-5 h-5" />,
@@ -327,40 +372,43 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
   }
 ];
 
-export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [configGlobal, setConfigGlobal] = useState<any>(null);
+export default function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useJWTAuth();
+  const { user } = useJWTAuth();
   const { loading, ...permissions } = usePlanPermissions();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [emailSoporte, setEmailSoporte] = useState('contacto@span.com');
+  const { logout } = useJWTAuth();
+  const [configGlobal, setConfigGlobal] = useState<ConfiguracionGlobal | null>(null);
 
-  // Obtener configuración global
+  // Cargar email de soporte y configuración global
   useEffect(() => {
-    const fetchConfigGlobal = async () => {
+    const loadData = async () => {
       try {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('configuracion_global')
-          .select('titular')
+          .select('email_soporte, titular')
           .single();
 
-        if (error) {
-          console.error('Error cargando configuración global:', error);
-        } else {
-          setConfigGlobal(data);
+        if (data && !error) {
+          const configData = data as ConfiguracionGlobal;
+          if (configData.email_soporte) setEmailSoporte(configData.email_soporte);
+          setConfigGlobal(configData);
         }
       } catch (error) {
-        console.error('Error general cargando configuración global:', error);
+        console.error('Error cargando configuración:', error);
       }
     };
 
-    fetchConfigGlobal();
+    loadData();
   }, []);
 
   // Función para obtener el nombre de la empresa
   const getNombreEmpresa = () => {
-    return configGlobal?.titular;
+    return configGlobal?.titular || 'Span';
   };
 
   const handleLogout = async () => {
@@ -395,10 +443,10 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
           {items.map((item) => {
             const isActive = pathname === item.href;
             
-            // Verificar si el item requiere permiso y Si el usuario tiene acceso
-            let hasPermission = true;
+            // Verificar si el item requiere permiso y si el usuario tiene acceso
+            let itemHasPermission = true;
             if (item.requiresPermission && !loading) {
-              hasPermission = 
+              itemHasPermission = 
                 item.requiresPermission === 'inventory' ? permissions.canUseInventory :
                 item.requiresPermission === 'commissions' ? permissions.canUseCommissions :
                 item.requiresPermission === 'marketing' ? permissions.canUseMarketing :
@@ -411,18 +459,18 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
             return (
               <li key={item.href}>
                 <Link
-                  href={!hasPermission && !loading ? '/suscripcion' : item.href}
+                  href={!itemHasPermission && !loading ? '/suscripcion' : item.href}
                   className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                     isActive
                       ? 'bg-amber-700 text-white shadow-lg'
                       : 'hover:bg-amber-800 text-amber-100'
-                  } ${!hasPermission && !loading ? 'opacity-75' : ''}`}
+                  } ${!itemHasPermission && !loading ? 'opacity-75' : ''}`}
                 >
                   {item.icon}
                   {!isCollapsed && (
                     <div className="flex items-center justify-between flex-1">
                       <span className="font-medium">{item.title}</span>
-                      {item.requiresPermission && !loading && !hasPermission && (
+                      {item.requiresPermission && !loading && !itemHasPermission && (
                         <LockClosedIcon className="w-4 h-4 text-amber-300" title="Requiere plan superior" />
                       )}
                     </div>
@@ -471,6 +519,24 @@ export function Sidebar({ userRole, empresaNombre, userName }: SidebarProps) {
           </>
         ) : (
           renderSection('Menú', groupedItems.main || [])
+        )}
+        
+        {/* Botón de Escríbenos para empresas */}
+        {userRole !== 'admin_global' && userRole !== 'soporte' && userRole !== 'ventas' && (
+          <div className="mt-6 mb-4">
+            {!isCollapsed && (
+              <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider mb-2 px-3">
+                Contacto Directo
+              </h3>
+            )}
+            <a
+              href={`mailto:${emailSoporte}?subject=Soporte desde ${empresaNombre || 'mi empresa'}&body=Hola, necesito ayuda con...`}
+              className="flex items-center space-x-3 px-3 py-2 bg-amber-700 hover:bg-amber-600 rounded-lg transition-all duration-200 text-white"
+            >
+              <EnvelopeIcon className="w-5 h-5" />
+              {!isCollapsed && <span className="font-medium">Escríbenos</span>}
+            </a>
+          </div>
         )}
       </nav>
 

@@ -173,8 +173,21 @@ export async function enviarCorreoRecuperacion(
       </html>
     `;
 
+    // Lógica condicional para email de desarrollo vs producción
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const emailFrom = process.env.RESEND_FROM || `${titular} <onboarding@resend.dev>`;
+    
+    // En desarrollo con email de testing, solo permitir enviar al email del desarrollador
+    if (isDevelopment && emailFrom.includes('onboarding@resend.dev') && email !== 'hamintonjair@gmail.com') {
+      console.log('⚠️ En desarrollo, solo se puede enviar a hamintonjair@gmail.com con email de testing');
+      return {
+        success: false,
+        error: 'En desarrollo, solo se permite enviar al email del desarrollador (hamintonjair@gmail.com)'
+      };
+    }
+
     const { data, error } = await resend.emails.send({
-      from: `${titular} <onboarding@resend.dev>`,
+      from: emailFrom,
       to: [email],
       subject: `Recuperación de Contraseña - ${titular}`,
       html: htmlContent,
@@ -420,8 +433,21 @@ export async function enviarCorreoBienvenida(
       </html>
     `;
 
+    // Lógica condicional para email de desarrollo vs producción
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const emailFrom = process.env.RESEND_FROM || `${titular} <onboarding@resend.dev>`;
+    
+    // En desarrollo con email de testing, solo permitir enviar al email del desarrollador
+    if (isDevelopment && emailFrom.includes('onboarding@resend.dev') && email !== 'hamintonjair@gmail.com') {
+      console.log('⚠️ En desarrollo, solo se puede enviar a hamintonjair@gmail.com con email de testing');
+      return {
+        success: false,
+        error: 'En desarrollo, solo se permite enviar al email del desarrollador (hamintonjair@gmail.com)'
+      };
+    }
+
     const { data, error } = await resend.emails.send({
-      from: `${titular} <onboarding@resend.dev>`,
+      from: emailFrom,
       to: [email],
       subject: `¡Bienvenido a ${titular} - Credenciales de Acceso para ${nombreEmpresa}`,
       html: htmlContent,
@@ -893,8 +919,21 @@ export async function enviarContraseñaTemporal(
       </html>
     `;
 
+    // Lógica condicional para email de desarrollo vs producción
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const emailFrom = process.env.RESEND_FROM || `${titular} <onboarding@resend.dev>`;
+    
+    // En desarrollo con email de testing, solo permitir enviar al email del desarrollador
+    if (isDevelopment && emailFrom.includes('onboarding@resend.dev') && email !== 'hamintonjair@gmail.com') {
+      console.log('⚠️ En desarrollo, solo se puede enviar a hamintonjair@gmail.com con email de testing');
+      return {
+        success: false,
+        error: 'En desarrollo, solo se permite enviar al email del desarrollador (hamintonjair@gmail.com)'
+      };
+    }
+
     const { data, error } = await resend.emails.send({
-      from: `${titular} <onboarding@resend.dev>`,
+      from: emailFrom,
       to: [email],
       subject: `Contraseña Temporal - ${titular}`,
       html: htmlContent,

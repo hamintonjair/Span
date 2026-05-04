@@ -33,7 +33,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     console.log('Body recibido:', body);
 
-    const { id, banco, tipo_cuenta, numero_cuenta, titular, documento_titular, porcentaje_iva, whatsapp_soporte, mensaje_global, direccion, ciudad, logo_url, adminId } = body;
+    const { id, banco, tipo_cuenta, numero_cuenta, titular, nombre_titular, documento_titular, porcentaje_iva, whatsapp_soporte, email_soporte, mensaje_global, direccion, ciudad, logo_url, horario_semana, horario_sabado, horario_domingo, faq_items, adminId } = body;
 
     // Validar campos requeridos
     if (!banco || !numero_cuenta || !titular) {
@@ -52,13 +52,19 @@ export async function PUT(request: NextRequest) {
       tipo_cuenta: tipo_cuenta || '',
       numero_cuenta,
       titular,
+      nombre_titular: nombre_titular || '',
       documento_titular: documento_titular || '',
       porcentaje_iva: porcentaje_iva || '',
       whatsapp_soporte: whatsapp_soporte || '',
+      email_soporte: email_soporte || '',
       mensaje_global: mensaje_global || '',
       direccion: direccion || '',
       ciudad: ciudad || '',
       logo_url: logo_url || '',
+      horario_semana: horario_semana || '',
+      horario_sabado: horario_sabado || '',
+      horario_domingo: horario_domingo || '',
+      faq_items: faq_items || '[]',
       actualizado_en: new Date().toISOString()
     };
     
