@@ -13,7 +13,7 @@ const nextConfig = {
     optimizePackageImports: ['@heroicons/react', 'lucide-react', 'recharts'],
   },
   compiler: {
-    removeConsole: false,
+    removeConsole: true,
   },
   webpack: (config, { dev }) => {
     // Desactivar source maps en producción para mejorar velocidad
