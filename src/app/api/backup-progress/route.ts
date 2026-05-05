@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { obtenerDatosTablaAction } from '@/app/actions/admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   // Configurar headers para Server-Sent Events
   const headers = new Headers({

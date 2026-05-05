@@ -3,6 +3,8 @@ import { clearJWTCookie } from '@/lib/jwt';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { registrarLog } from '@/lib/audit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Registrar log de auditoría para logout
