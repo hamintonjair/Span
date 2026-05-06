@@ -569,7 +569,7 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
         {!isCollapsed && (
           <>
             <button 
-              onClick={() => window.open('https://drive.google.com/file/d/1VQcoRXIPwHv1KUqH-SSSyHP0FDccmSMl/view?usp=sharing', '_blank')}
+              onClick={() => window.open('https://drive.google.com/file/d/1PjlTBuAkVuxovU-aY5iLw3Grq2bYg927/view?usp=sharing', '_blank')}
               className="mt-3 w-full flex items-center justify-center space-x-2 px-3 py-2 bg-amber-800 hover:bg-amber-700 rounded-lg transition-colors"
             >
               <DocumentTextIcon className="w-5 h-5" />
