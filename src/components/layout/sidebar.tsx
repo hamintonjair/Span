@@ -119,34 +119,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'saas'
   },
 
-  // Operaciones de salón (roles de empresa)
+  // Operaciones de salón (roles de empresa) - ORDEN LÓGICO DE NEGOCIO
   {
-    title: 'Mi Suscripción',
-    href: '/suscripcion',
-    icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa'],
-    section: 'main'
-  },
-  // Auditoría (solo admin_empresa)
-  {
-    title: 'Auditoría',
-    href: '/auditoria',
-    icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
-    roles: ['admin_empresa'],
-    section: 'main'
-  },
-  {
-    title: 'POS',
-    href: '/ventas/nueva',
-    icon: <CreditCardIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista', 'estilista'],
-    section: 'main'
-  },
-  {
-    title: 'Historial de Ventas',
-    href: '/ventas',
-    icon: <DocumentTextIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista'],
+    title: 'Dashboard',
+    href: '/dashboard-empresa',
+    icon: <HomeIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'estilista', 'recepcionista'],
     section: 'main'
   },
   {
@@ -171,10 +149,24 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'main'
   },
   {
-    title: 'Productos',
-    href: '/productos',
-    icon: <ShoppingCartIcon className="w-5 h-5" />,
+    title: 'POS',
+    href: '/ventas/nueva',
+    icon: <CreditCardIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'recepcionista', 'estilista'],
+    section: 'main'
+  },
+  {
+    title: 'Historial de Ventas',
+    href: '/ventas',
+    icon: <DocumentTextIcon className="w-5 h-5" />,
     roles: ['admin_empresa', 'recepcionista'],
+    section: 'main'
+  },
+  {
+    title: 'Empleados',
+    href: '/empleados',
+    icon: <UserGroupIcon className="w-5 h-5" />,
+    roles: ['admin_empresa'],
     section: 'main'
   },
   {
@@ -185,19 +177,25 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'main'
   },
   {
+    title: 'Productos',
+    href: '/productos',
+    icon: <ShoppingCartIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'recepcionista'],
+    section: 'main'
+  },
+  {
+    title: 'Inventario',
+    href: '/inventario',
+    icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'recepcionista'],
+    section: 'main',
+    requiresPermission: 'inventory'
+  },
+  {
     title: 'Proveedores',
     href: '/proveedores',
     icon: <TruckIcon className="w-5 h-5" />,
     roles: ['admin_empresa', 'recepcionista'],
-    section: 'main'
-  },
-
-  // Gestión (admin_empresa)
-  {
-    title: 'Empleados',
-    href: '/empleados',
-    icon: <UserGroupIcon className="w-5 h-5" />,
-    roles: ['admin_empresa'],
     section: 'main'
   },
   {
@@ -208,20 +206,19 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'main'
   },
   {
-    title: 'Usuarios',
-    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/usuarios' : '/usuarios',
-    icon: <UsersIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa', 'soporte', 'ventas'],
-    section: 'main'
-  },
-
-  // Finanzas
-  {
     title: 'Caja',
     href: '/caja',
     icon: <CreditCardIcon className="w-5 h-5" />,
     roles: ['admin_empresa', 'recepcionista','estilista'],
     section: 'main'
+  },
+  {
+    title: 'Comisiones',
+    href: '/mis-comisiones',
+    icon: <CurrencyDollarIcon className="w-5 h-5" />,
+    roles: ['admin_empresa', 'recepcionista'],
+    section: 'main',
+    requiresPermission: 'commissions'
   },
   {
     title: 'Préstamos',
@@ -238,25 +235,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     section: 'main',
     requiresPermission: 'nominas'
   },
-
-  // Módulos Premium (restringidos por plan)
   {
-    title: 'Inventario',
-    href: '/inventario',
-    icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista'],
-    section: 'main',
-    requiresPermission: 'inventory'
-  },
-  {
-    title: 'Comisiones',
-    href: '/mis-comisiones',
-    icon: <CurrencyDollarIcon className="w-5 h-5" />,
-    roles: ['admin_empresa', 'recepcionista'],
-    section: 'main',
-    requiresPermission: 'commissions'
-  },
-{
     title: 'Marketing',
     href: '/marketing',
     // Cambiamos a Megaphone para representar publicidad/captación
@@ -281,6 +260,27 @@ const getSidebarItems = (userRole: string): SidebarItem[] => [
     roles: ['admin_empresa', 'estilista', 'recepcionista'],
     section: 'main',
     requiresPermission: 'priority_support'
+  },
+  {
+    title: 'Auditoría',
+    href: '/auditoria',
+    icon: <ClipboardDocumentListIcon className="w-5 h-5" />,
+    roles: ['admin_empresa'],
+    section: 'main'
+  },
+  {
+    title: 'Usuarios',
+    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/usuarios' : '/usuarios',
+    icon: <UsersIcon className="w-5 h-5" />,
+    roles: ['admin_global', 'admin_empresa', 'soporte', 'ventas'],
+    section: 'main'
+  },
+  {
+    title: 'Mi Suscripción',
+    href: '/suscripcion',
+    icon: <CurrencyDollarIcon className="w-5 h-5" />,
+    roles: ['admin_empresa'],
+    section: 'main'
   },
 
   // Configuración Global (solo admin_global)
