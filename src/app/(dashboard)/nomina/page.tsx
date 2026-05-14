@@ -91,6 +91,10 @@ export default function NominaPage() {
   const [sueldoBase, setSueldoBase] = useState<number>(0);
   const [totalComisiones, setTotalComisiones] = useState<number>(0);
   const [totalPagar, setTotalPagar] = useState<number>(0);
+  
+  // Historial de nóminas pagadas
+  const [nominasPagadas, setNominasPagadas] = useState<Nomina[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState<boolean>(false);
 
   // Formateo de dinero sin decimales (solo punto de mil)
   const formatMoney = (amount: number) => {
@@ -122,6 +126,32 @@ export default function NominaPage() {
       setEmpleados(data || []);
     } catch (error) {
       console.error('Error:', error);
+    }
+  };
+
+  // Cargar historial de nóminas pagadas
+  const cargarHistorialNominas = async () => {
+    if (!user?.empresa_id) return;
+    
+    setLoadingHistorial(true);
+    try {
+      const { data, error } = await supabase
+        .from('nominas')
+        .select('*')
+        .eq('empresa_id', user.empresa_id)
+        .eq('estado', 'pagado')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error cargando historial de nóminas:', error);
+        return;
+      }
+
+      setNominasPagadas(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoadingHistorial(false);
     }
   };
 
@@ -343,6 +373,7 @@ export default function NominaPage() {
   useEffect(() => {
     if (user) {
       cargarEmpleados();
+      cargarHistorialNominas();
     }
   }, [user]);
 
@@ -521,6 +552,94 @@ export default function NominaPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Historial de Nóminas Pagadas */}
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historial de Nóminas Pagadas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingHistorial ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : nominasPagadas.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha Pago
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Empleado
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Periodo
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Sueldo Base
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Comisiones
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total Pagado
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {nominasPagadas.map((nomina) => {
+                        const empleado = empleados.find(emp => emp.id === nomina.empleado_id);
+                        return (
+                          <tr key={nomina.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {new Date(nomina.created_at).toLocaleString('es-MX')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {empleado?.nombre_completo || 'Empleado no encontrado'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {nomina.periodo_tipo} ({new Date(nomina.fecha_inicio).toLocaleDateString('es-MX')} al {new Date(nomina.fecha_fin).toLocaleDateString('es-MX')})
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              {formatMoney(nomina.sueldo_base)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                              {formatMoney(nomina.total_comisiones)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 text-right">
+                              {formatMoney(nomina.total_pagar)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <Button
+                                onClick={() => window.location.href = `/nomina/imprimir/${nomina.id}`}
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                                size="sm"
+                              >
+                                Imprimir Ticket
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">
+                    No hay nóminas pagadas en el historial
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 

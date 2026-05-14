@@ -151,6 +151,97 @@ export default function AtencionPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Función para obtener el ID de la caja abierta actual
+  const obtenerCajaAbiertaId = async () => {
+    try {
+      if (!user?.id || !user?.empresa_id) return null;
+      
+      const { data: cajaData, error } = await (supabase as any)
+        .from('cajas')
+        .select('id')
+        .eq('vendedor_id', user.id)
+        .eq('empresa_id', user.empresa_id)
+        .eq('estado', 'abierta')
+        .single();
+      
+      if (error) {
+        console.error('Error obteniendo caja abierta:', error);
+        return null;
+      }
+      
+      return cajaData?.id || null;
+    } catch (error) {
+      console.error('Error en obtenerCajaAbiertaId:', error);
+      return null;
+    }
+  };
+
+  // Función para generar comisiones automáticamente
+  const generarComisiones = async (ventaId: string, empleadoId: string, totalVenta: number) => {
+    try {
+      console.log('🚀 Iniciando generación de comisión:', { ventaId, empleadoId, totalVenta });
+      
+      // Obtener datos del empleado para saber su porcentaje de comisión
+      const { data: empleadoData, error: empleadoError } = await (supabase as any)
+        .from('empleados')
+        .select('porcentaje_comision, nombre_completo')
+        .eq('id', empleadoId)
+        .single();
+      
+      console.log('👤 Datos del empleado:', { empleadoData, empleadoError });
+      
+      if (empleadoError || !empleadoData) {
+        console.error('❌ Error obteniendo porcentaje de comisión del empleado:', empleadoError);
+        return;
+      }
+      
+      const porcentajeComision = empleadoData.porcentaje_comision || 0;
+      console.log('📊 Porcentaje de comisión:', porcentajeComision);
+      
+      if (porcentajeComision <= 0) {
+        console.log('⚠️ Empleado no tiene porcentaje de comisión configurado o es 0');
+        return;
+      }
+      
+      // Calcular monto de comisión
+      const montoComision = (totalVenta * porcentajeComision) / 100;
+      console.log('💰 Monto de comisión calculado:', montoComision);
+      
+      if (montoComision <= 0) {
+        console.log('⚠️ Monto de comisión es cero, no se crea registro');
+        return;
+      }
+      
+      // Crear registro de comisión
+      const comisionDataToInsert = {
+        empresa_id: user?.empresa_id,
+        empleado_id: empleadoId,
+        venta_id: ventaId,
+        monto_base: totalVenta,
+        monto_comision: montoComision,
+        porcentaje_aplicado: porcentajeComision,
+        estado: 'pendiente'
+      };
+      
+      console.log('💾 Datos a insertar en comisiones:', comisionDataToInsert);
+      
+      const { data: comisionData, error: comisionError } = await (supabase as any)
+        .from('comisiones')
+        .insert(comisionDataToInsert)
+        .select()
+        .single();
+      
+      if (comisionError) {
+        console.error('❌ Error creando comisión:', comisionError);
+      } else {
+        console.log('✅ Comisión generada exitosamente:', comisionData);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en generarComisiones:', error);
+    }
+  };
+
   // Función para formatear fecha con timezone de Bogotá
   const formatearFechaBogota = (fechaString: string) => {
     try {
@@ -895,6 +986,7 @@ export default function AtencionPage() {
         cliente_id: cliente.id,
         vendedor_id: user?.id, // Usuario del sistema que vende
         cita_id: cita.id, // Vincular con la cita
+        caja_id: await obtenerCajaAbiertaId(), // Agregar caja_id de la caja abierta actual
         subtotal: subtotalTotal,
         impuestos: ivaTotal, // Usar 'impuestos' en lugar de 'iva'
         total: totalConIVA,
@@ -923,6 +1015,10 @@ export default function AtencionPage() {
         return;
       }
 
+      // 3.5. Generar comisiones automáticamente para el empleado
+      if (cita.empleado_id && ventaCreada.id && totalConIVA > 0) {
+        await generarComisiones(ventaCreada.id, cita.empleado_id, totalConIVA);
+      }
 
       // 4. Insertar detalles de la venta (servicios)
       for (const servicioAdicional of serviciosAdicionales) {

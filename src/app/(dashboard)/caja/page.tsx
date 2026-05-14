@@ -141,6 +141,9 @@ export default function CajaPage() {
   // Función para obtener ingresos del turno (ventas + préstamos)
   const obtenerIngresosTurno = async (cajaId: string) => {
     try {
+      // ID de la cita específica para depuración
+      const citaEspecifica = 'dff17876-11bb-446e-9c3e-f00f9eb3dea3';
+      
       // Obtener información de la caja para obtener fecha_apertura
       const { data: cajaData, error: cajaError } = await supabase
         .from('cajas')
@@ -155,6 +158,44 @@ export default function CajaPage() {
       
       // Convertir fecha de apertura a formato ISO para asegurar comparación correcta
       const fechaAperturaISO = new Date(cajaData.fecha_apertura).toISOString();
+      
+      // 0. Verificar estado de la cita específica y si tiene venta asociada
+      const { data: citaData, error: citaError } = await supabase
+        .from('citas')
+        .select('id, estado, total_estimado, created_at, updated_at')
+        .eq('id', citaEspecifica)
+        .single() as any;
+      
+      console.log('🔍 Estado de la cita específica:', { citaData, citaError });
+      
+      // Verificar si hay ventas asociadas a esta cita en general (sin filtro de caja)
+      const { data: ventasCitaGeneral, error: ventasCitaGeneralError } = await supabase
+        .from('ventas')
+        .select('id, total, caja_id, created_at, cita_id')
+        .eq('cita_id', citaEspecifica) as any;
+      
+      console.log('📋 Ventas generales para esta cita:', { ventasCitaGeneral, ventasCitaGeneralError });
+      
+      // Si hay ventas para esta cita sin caja_id, repararlas
+      if (ventasCitaGeneral && ventasCitaGeneral.length > 0) {
+        const ventasSinCaja = ventasCitaGeneral.filter((v: any) => !v.caja_id);
+        if (ventasSinCaja.length > 0) {
+          console.log('🔧 Reparando ventas sin caja_id:', ventasSinCaja);
+          
+          for (const venta of ventasSinCaja) {
+            const { error: updateError } = await supabase
+              .from('ventas')
+              .update({ caja_id: cajaId })
+              .eq('id', venta.id);
+            
+            if (updateError) {
+              console.error('❌ Error actualizando venta con caja_id:', updateError);
+            } else {
+              console.log('✅ Venta reparada:', venta.id);
+            }
+          }
+        }
+      }
       
       // 1. Consultar ventas
       const { data: ventasData, error: ventasError } = await supabase
@@ -174,9 +215,25 @@ export default function CajaPage() {
       const ventasPOS = ventasData?.filter((venta: any) => !venta.cita_id) || [];
       const ventasCitas = ventasData?.filter((venta: any) => venta.cita_id) || [];
       
+      // Logs de depuración
+      console.log('📊 Ventas encontradas:', ventasData);
+      console.log('🛒 Ventas POS:', ventasPOS);
+      console.log('📅 Ventas con citas:', ventasCitas);
+      
+      // Verificar específicamente si hay ventas para la cita dff17876-11bb-446e-9c3e-f00f9eb3dea3
+      const ventaCitaEspecifica = ventasData?.find((v: any) => v.cita_id === citaEspecifica);
+      console.log(`🔍 Buscando venta para cita ${citaEspecifica}:`, ventaCitaEspecifica);
+      
+      // Verificar todas las ventas con cita_id no nulo
+      const ventasConCitaId = ventasData?.filter((v: any) => v.cita_id !== null) || [];
+      console.log('📋 Todas las ventas con cita_id no nulo:', ventasConCitaId);
+      
       // Calcular totales de ventas
       const totalVentasPOS = ventasPOS.reduce((sum: number, venta: any) => sum + (venta.total || 0), 0);
       const totalVentasCitas = ventasCitas.reduce((sum: number, venta: any) => sum + (venta.total || 0), 0);
+      
+      console.log('💰 Total ventas POS:', totalVentasPOS);
+      console.log('💰 Total ventas citas:', totalVentasCitas);
       
       // 2. Consultar recaudo de préstamos desde movimientos_caja (usando metodo_pago explícito)
       
@@ -380,141 +437,145 @@ export default function CajaPage() {
   const obtenerCitasTurno = async (cajaId: string) => {
     try {
       
-      // Primero, vamos a explorar qué columnas tiene la tabla citas sin filtro
-      const { data: columnasData, error: columnasError } = await supabase
-        .from('citas')
-        .select('*')
-        .limit(1);
-
-
-      if (columnasError) {
-        console.error('❌ Error explorando citas:', columnasError);
-        return [];
-      }
-
-      if (columnasData && columnasData.length > 0) {
-        console.log('📋 Columnas encontradas en citas:', Object.keys(columnasData[0]));
-        console.log('📋 Estructura de una cita:', columnasData[0]);
-      }
-
-      // Como citas.caja_id no existe, vamos a intentar obtener citas por fecha
-      // Primero necesitamos obtener la fecha de la caja para filtrar citas del mismo día
+      // Obtener información de la caja para el rango de fechas
       const { data: cajaData, error: cajaError } = await supabase
         .from('cajas')
-        .select('fecha_apertura, fecha_cierre')
+        .select('fecha_apertura, fecha_cierre, empresa_id')
         .eq('id', cajaId)
-        .single();
-
-      console.log('📦 Fechas de la caja:', { cajaData, cajaError });
+        .single() as any;
 
       if (cajaError || !cajaData) {
-        console.error('❌ Error obteniendo fechas de caja:', cajaError);
+        console.error('❌ Error obteniendo información de caja:', cajaError);
         return [];
       }
 
-      // Obtener citas en el rango de fechas de la caja
-      const fechaInicio = new Date((cajaData as any).fecha_apertura).toISOString();
-      const fechaFin = new Date((cajaData as any).fecha_cierre).toISOString();
+      console.log('📦 Fechas de la caja:', cajaData);
 
-      console.log('📅 Buscando citas entre:', fechaInicio, 'y', fechaFin);
+      // Para caja abierta, usar fecha_apertura hasta ahora
+      let fechaFinISO;
+      if (cajaData.fecha_cierre) {
+        fechaFinISO = new Date(cajaData.fecha_cierre).toISOString();
+      } else {
+        // Si la caja está abierta, usar fecha actual
+        fechaFinISO = new Date().toISOString();
+      }
 
-      // Usar el nombre correcto de la columna: servicios_ids (plural)
-      const { data, error } = await supabase
+      const fechaInicioISO = new Date(cajaData.fecha_apertura).toISOString();
+      
+      console.log('📅 Buscando citas entre:', fechaInicioISO, 'y', fechaFinISO);
+
+      // Obtener citas que tengan ventas asociadas en el rango de fechas
+      const { data: ventasCitas, error: ventasError } = await supabase
+        .from('ventas')
+        .select('cita_id, total, created_at')
+        .eq('caja_id', cajaId)
+        .eq('empresa_id', cajaData.empresa_id)
+        .not('cita_id', 'is', null)
+        .gte('created_at', fechaInicioISO)
+        .lte('created_at', fechaFinISO) as any;
+
+      if (ventasError) {
+        console.error('❌ Error obteniendo ventas con citas:', ventasError);
+        return [];
+      }
+
+      console.log('📦 Ventas con citas encontradas:', ventasCitas);
+
+      if (!ventasCitas || ventasCitas.length === 0) {
+        console.log('ℹ️ No hay ventas con citas en este turno');
+        return [];
+      }
+
+      // Obtener información completa de las citas
+      const citasIds = ventasCitas.map((v: any) => v.cita_id).filter(Boolean);
+      
+      const { data: citasData, error: citasError } = await supabase
         .from('citas')
         .select('id, fecha, cliente_id, servicios_ids')
-        .gte('fecha', fechaInicio)
-        .lte('fecha', fechaFin)
-        .order('fecha', { ascending: false });
+        .in('id', citasIds) as any;
 
-      console.log('📦 Resultado citas por rango de fechas:', { data, error });
-
-      if (error) {
-        console.error('❌ Error obteniendo citas por fechas:', error);
+      if (citasError) {
+        console.error('❌ Error obteniendo detalles de citas:', citasError);
         return [];
       }
 
-      // Si hay datos, obtener nombres adicionales
-      if (data && data.length > 0) {
-        console.log('🔗 Enriqueciendo citas con nombres...');
-        
-        // Como servicios_ids es probablemente un array, necesitamos manejarlo diferente
-        const clienteIds = Array.from(new Set((data as any[]).map(cita => cita.cliente_id).filter(Boolean)));
-        
-        // Extraer todos los IDs de servicios de los arrays servicios_ids
-        const todosServiciosIds: string[] = [];
-        (data as any[]).forEach(cita => {
-          if (cita.servicios_ids && Array.isArray(cita.servicios_ids)) {
-            todosServiciosIds.push(...cita.servicios_ids);
-          }
-        });
-        
-        const servicioIds = Array.from(new Set(todosServiciosIds.filter(Boolean)));
+      console.log('📦 Citas obtenidas:', citasData);
 
-        console.log('👥 Clientes a buscar:', clienteIds);
-        console.log('🔧 Servicios a buscar:', servicioIds);
+      // Obtener nombres de clientes y servicios
+      const clienteIds = Array.from(new Set(citasData.map((cita: any) => cita.cliente_id).filter(Boolean)));
+      
+      // Extraer todos los IDs de servicios de los arrays servicios_ids
+      const todosServiciosIds: string[] = [];
+      citasData.forEach((cita: any) => {
+        if (cita.servicios_ids && Array.isArray(cita.servicios_ids)) {
+          todosServiciosIds.push(...cita.servicios_ids);
+        }
+      });
+      
+      const servicioIds = Array.from(new Set(todosServiciosIds.filter(Boolean)));
 
-        // Obtener nombres por separado
-        const [clientesData, serviciosData] = await Promise.all([
-          clienteIds.length > 0 ? supabase
-            .from('clientes')
-            .select('id, nombre')
-            .in('id', clienteIds) : Promise.resolve({ data: [] }),
-          servicioIds.length > 0 ? supabase
-            .from('servicios')
-            .select('id, nombre, precio') // Incluir precio del servicio
-            .in('id', servicioIds) : Promise.resolve({ data: [] })
-        ]);
+      console.log('👥 Clientes a buscar:', clienteIds);
+      console.log('🔧 Servicios a buscar:', servicioIds);
 
-        console.log('👤 Clientes encontrados:', clientesData.data);
-        console.log('🔨 Servicios encontrados:', serviciosData.data);
+      // Obtener nombres por separado
+      const [clientesData, serviciosData] = await Promise.all([
+        clienteIds.length > 0 ? supabase
+          .from('clientes')
+          .select('id, nombre')
+          .in('id', clienteIds) : Promise.resolve({ data: [] }),
+        servicioIds.length > 0 ? supabase
+          .from('servicios')
+          .select('id, nombre, precio')
+          .in('id', servicioIds) : Promise.resolve({ data: [] })
+      ]);
 
-        // Crear mapas de lookup
-        const clientesMap: { [key: string]: string } = {};
-        const serviciosMap: { [key: string]: any } = {}; // Guardar objeto completo con precio
-        
-        (clientesData.data as any[])?.forEach(cliente => {
-          clientesMap[cliente.id] = cliente.nombre || 'Sin nombre';
-        });
-        
-        (serviciosData.data as any[])?.forEach(servicio => {
-          serviciosMap[servicio.id] = {
-            nombre: servicio.nombre || 'Servicio sin nombre',
-            precio: servicio.precio || 0
-          };
-        });
+      console.log('👤 Clientes encontrados:', clientesData.data);
+      console.log('🔨 Servicios encontrados:', serviciosData.data);
 
-        // Enriquecer citas con nombres y precios de múltiples servicios
-        const citasEnriquecidas = (data as any[]).map(cita => {
-          // Obtener todos los servicios de esta cita
-          const serviciosDeCita = (cita.servicios_ids || [])
-            .map((servicioId: string) => serviciosMap[servicioId])
-            .filter(Boolean);
+      // Crear mapas de lookup
+      const clientesMap: { [key: string]: string } = {};
+      const serviciosMap: { [key: string]: any } = {};
+      
+      (clientesData.data as any[])?.forEach(cliente => {
+        clientesMap[cliente.id] = cliente.nombre || 'Sin nombre';
+      });
+      
+      (serviciosData.data as any[])?.forEach(servicio => {
+        serviciosMap[servicio.id] = {
+          nombre: servicio.nombre || 'Servicio sin nombre',
+          precio: servicio.precio || 0
+        };
+      });
 
-          // Calcular total sumando precios de todos los servicios
-          const valorTotal = serviciosDeCita.reduce((sum: number, servicio: any) => 
-            sum + (servicio.precio || 0), 0);
+      // Enriquecer citas con nombres y precios de múltiples servicios
+      const citasEnriquecidas = citasData.map((cita: any) => {
+        // Obtener todos los servicios de esta cita
+        const serviciosDeCita = (cita.servicios_ids || [])
+          .map((servicioId: string) => serviciosMap[servicioId])
+          .filter(Boolean);
 
-          // Crear nombres de servicios separados por comas
-          const nombresServicios = serviciosDeCita
-            .map((servicio: any) => servicio.nombre)
-            .filter(Boolean)
-            .join(', ');
+        // Calcular total sumando precios de todos los servicios
+        const valorTotal = serviciosDeCita.reduce((sum: number, servicio: any) => 
+          sum + (servicio.precio || 0), 0);
 
-          return {
-            ...cita,
-            valor_total: valorTotal,
-            cliente_nombre: clientesMap[cita.cliente_id] || 'Cliente sin nombre',
-            servicio_nombre: nombresServicios || 'Servicios sin nombre',
-            servicios_detalle: serviciosDeCita // Guardar detalle completo
-          };
-        });
+        // Crear nombres de servicios separados por comas
+        const nombresServicios = serviciosDeCita
+          .map((servicio: any) => servicio.nombre)
+          .filter(Boolean)
+          .join(', ');
 
-        console.log('✅ Citas enriquecidas:', citasEnriquecidas);
-        return citasEnriquecidas;
-      }
+        return {
+          ...cita,
+          valor_total: valorTotal,
+          cliente_nombre: clientesMap[cita.cliente_id] || 'Cliente sin nombre',
+          servicio_nombre: nombresServicios || 'Servicios sin nombre',
+          servicios_detalle: serviciosDeCita
+        };
+      });
 
-      console.log('✅ Citas obtenidas (vacío):', data?.length || 0);
-      return [];
+      console.log('✅ Citas enriquecidas:', citasEnriquecidas);
+      return citasEnriquecidas;
+
     } catch (error) {
       console.error('❌ Error en obtenerCitasTurno:', error);
       return [];

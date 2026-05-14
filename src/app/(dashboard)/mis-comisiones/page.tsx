@@ -89,22 +89,42 @@ export default function MisComisionesPage() {
     }
   };
 
-  // Función para obtener nombres de servicios
+  // Función para obtener nombres de servicios y productos
   const obtenerNombresServicios = async (serviciosIds: string[]) => {
     try {
-      const { data: servicios } = await supabase
+      console.log('🚀 Obteniendo nombres de servicios y productos para IDs:', serviciosIds);
+      
+      // Separar IDs de servicios y productos (asumimos que los productos también están en la tabla servicios)
+      const { data: servicios, error } = await supabase
         .from('servicios')
         .select('id, nombre')
         .in('id', serviciosIds);
       
+      // También buscar en productos por si acaso
+      const { data: productos, error: productosError } = await supabase
+        .from('productos')
+        .select('id, nombre')
+        .in('id', serviciosIds);
+      
+      console.log('📋 Resultado de servicios:', { servicios, error });
+      console.log('📦 Resultado de productos:', { productos, productosError });
+      
       const nombresMap: Record<string, string> = {};
+      
+      // Agregar nombres de servicios
       servicios?.forEach((serv: any) => {
         nombresMap[serv.id] = serv.nombre;
       });
       
+      // Agregar nombres de productos
+      productos?.forEach((prod: any) => {
+        nombresMap[prod.id] = prod.nombre;
+      });
+      
+      console.log('🗺️ Mapa de nombres combinados:', nombresMap);
       setNombresServicios(nombresMap);
     } catch (error) {
-      console.error('Error cargando nombres de servicios:', error);
+      console.error('Error cargando nombres de servicios y productos:', error);
     }
   };
 
@@ -168,28 +188,105 @@ export default function MisComisionesPage() {
           };
         });
         
-        // Obtener servicios de cada venta
+        // Obtener servicios de cada venta a través de la cita
         const serviciosPorVenta: Record<string, string[]> = {};
         for (const ventaId of ventaIds) {
-          const { data: detalles } = await supabase
-            .from('detalles_ventas')
-            .select('servicio_id')
-            .eq('venta_id', ventaId)
-            .not('servicio_id', 'is', null);
+          // Primero obtener el cita_id de esta venta
+          const { data: ventaData } = await supabase
+            .from('ventas')
+            .select('cita_id')
+            .eq('id', ventaId)
+            .single();
           
-          const servicioIds = detalles?.map((d: any) => d.servicio_id) || [];
-          serviciosPorVenta[ventaId] = servicioIds;
+          if (!ventaData?.cita_id) {
+            console.log(`⚠️ Venta ${ventaId} no tiene cita_id asociado`);
+            serviciosPorVenta[ventaId] = [];
+            continue;
+          }
+          
+          const citaId = ventaData.cita_id;
+          
+          // Obtener servicios principales de la cita (servicios_ids)
+          const { data: citaPrincipal } = await supabase
+            .from('citas')
+            .select('servicios_ids')
+            .eq('id', citaId)
+            .single();
+          
+          // Obtener servicios adicionales de la cita
+          const { data: serviciosCita } = await supabase
+            .from('cita_servicios_adicionales')
+            .select('servicio_id')
+            .eq('cita_id', citaId);
+          
+          // Obtener productos adicionales de la cita
+          const { data: productosCita } = await supabase
+            .from('cita_productos')
+            .select('producto_id')
+            .eq('cita_id', citaId);
+          
+          const serviciosPrincipalesIds = citaPrincipal?.servicios_ids || [];
+          const servicioIds = serviciosCita?.map((s: any) => s.servicio_id) || [];
+          const productoIds = productosCita?.map((p: any) => p.producto_id) || [];
+          
+          // Combinar todos: servicios principales, adicionales y productos
+          const todosIds = [...serviciosPrincipalesIds, ...servicioIds, ...productoIds];
+          serviciosPorVenta[ventaId] = todosIds;
+          
+          console.log(`🔍 Servicios para venta ${ventaId} (cita ${citaId}):`, { 
+            citaPrincipal, 
+            serviciosCita, 
+            productosCita, 
+            serviciosPrincipalesIds, 
+            servicioIds, 
+            productoIds, 
+            todosIds 
+          });
         }
         
         // Obtener nombres de servicios
         const todosServiciosIds = Object.values(serviciosPorVenta).flat();
-        await obtenerNombresServicios(todosServiciosIds);
+        console.log('🔍 Todos los IDs de servicios a buscar:', todosServiciosIds);
+        
+        // Obtener nombres directamente sin usar estado asíncrono
+        const nombresMapLocal: Record<string, string> = {};
+        
+        // Buscar en servicios
+        const { data: servicios } = await supabase
+          .from('servicios')
+          .select('id, nombre')
+          .in('id', todosServiciosIds);
+        
+        // Buscar en productos
+        const { data: productos } = await supabase
+          .from('productos')
+          .select('id, nombre')
+          .in('id', todosServiciosIds);
+        
+        // Construir mapa local
+        servicios?.forEach((serv: any) => {
+          nombresMapLocal[serv.id] = serv.nombre;
+        });
+        productos?.forEach((prod: any) => {
+          nombresMapLocal[prod.id] = prod.nombre;
+        });
+        
+        console.log('🗺️ Mapa de nombres local:', nombresMapLocal);
         
         // Enriquecer comisiones
         const comisionesEnriquecidas = (data || []).map((comision: any) => {
           const serviciosIds = serviciosPorVenta[comision.venta_id] || [];
-          const nombresServ = serviciosIds.map((id: string) => nombresServicios[id]).filter(Boolean);
+          const nombresServ = serviciosIds.map((id: string) => nombresMapLocal[id]).filter(Boolean);
           const empleadoData = nombresMapDirecto[comision.empleado_id] || {};
+          
+          console.log('🔍 Depuración comisión:', {
+            comisionId: comision.id,
+            ventaId: comision.venta_id,
+            serviciosIds,
+            nombresMapLocal,
+            nombresServ,
+            empleadoData
+          });
           
           return {
             ...comision,
@@ -614,12 +711,15 @@ return (
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {(user?.rol === 'admin_global' || user?.rol === 'admin_empresa') 
-                          ? `Empleado ID: ${comision.empleado_id}`
+                          ? comision.nombre_completo || `Empleado ID: ${comision.empleado_id}`
                           : 'Tu comisión'
                         }
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        Venta #{comision.venta_id}
+                        {comision.nombres_servicios && comision.nombres_servicios.length > 0
+                          ? comision.nombres_servicios.join(', ')
+                          : `Venta #${comision.venta_id}`
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {formatMoney(comision.monto_base)}

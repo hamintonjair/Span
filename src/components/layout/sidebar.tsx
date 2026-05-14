@@ -60,15 +60,7 @@ interface SidebarProps {
 }
 
 const getSidebarItems = (userRole: string): SidebarItem[] => [
-  // Dashboard principal
-  {
-    title: 'Dashboard',
-    href: (userRole === 'admin_global' || userRole === 'soporte' || userRole === 'ventas') ? '/admin/dashboard-admin' : '/dashboard-empresa',
-    icon: <HomeIcon className="w-5 h-5" />,
-    roles: ['admin_global', 'admin_empresa', 'estilista', 'recepcionista', 'empleado', 'soporte', 'ventas'],
-    section: 'main'
-  },
-
+  
   // Finanzas (solo admin_global y roles administrativos)
   {
     title: 'Finanzas',
