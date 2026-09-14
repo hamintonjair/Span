@@ -16,4 +16,5 @@ jobs:
             echo "Falta configurar la variable de repositorio APP_URL (Settings > Secrets and variables > Actions > Variables)"
             exit 1
           fi
-          curl -fsS "${{ vars.APP_URL }}/api/keep-alive"
+          APP_URL="${{ vars.APP_URL }}"
+          curl -fsS "${APP_URL%/}/api/keep-alive"

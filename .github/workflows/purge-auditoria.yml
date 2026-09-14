@@ -20,5 +20,6 @@ jobs:
             echo "Falta configurar el secreto CRON_SECRET"
             exit 1
           fi
+          APP_URL="${{ vars.APP_URL }}"
           curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ vars.APP_URL }}/api/cron/purge-auditoria"
+            "${APP_URL%/}/api/cron/purge-auditoria"
