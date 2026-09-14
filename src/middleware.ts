@@ -24,8 +24,12 @@ export async function middleware(request: NextRequest) {
   // Permitir acceso a páginas legales incluso para usuarios logueados
   const legalRoutes = ['/contacto', '/privacidad', '/terminos']
   const isLegalRoute = legalRoutes.includes(pathname)
-  
-  if (token && isPublicRoute && !isLegalRoute) {
+
+  // Permitir que un usuario logueado vea el landing público a propósito
+  // (botón "Ir a sitio" del sidebar de admin_global), sin la redirección de cortesía
+  const isPreview = request.nextUrl.searchParams.get('preview') === '1'
+
+  if (token && isPublicRoute && !isLegalRoute && !isPreview) {
     try {
       const payload = await verifyJWT(token)
       

@@ -36,7 +36,8 @@ import {
   BookOpenIcon,
   EnvelopeIcon,
   ScaleIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  GlobeAltIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -560,7 +561,16 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
         </div>
         {!isCollapsed && (
           <>
-            <button 
+            {userRole === 'admin_global' && (
+              <button
+                onClick={() => window.open('/?preview=1', '_blank')}
+                className="mt-3 w-full flex items-center justify-center space-x-2 px-3 py-2 bg-amber-800 hover:bg-amber-700 rounded-lg transition-colors"
+              >
+                <GlobeAltIcon className="w-5 h-5" />
+                <span className="text-sm">Ir a sitio</span>
+              </button>
+            )}
+            <button
               onClick={() => window.open('https://drive.google.com/file/d/1PjlTBuAkVuxovU-aY5iLw3Grq2bYg927/view?usp=sharing', '_blank')}
               className="mt-3 w-full flex items-center justify-center space-x-2 px-3 py-2 bg-amber-800 hover:bg-amber-700 rounded-lg transition-colors"
             >
