@@ -308,19 +308,22 @@ Esto regenera automáticamente los 30 tests basados en la configuración.
 ---
 
 ### 3. **Configurar Variables de Entorno**
-Crea un archivo `.env.local` con:
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_de_supabase
+Copia `.env.example` a `.env.local` y completa los valores. Esta es la lista completa de variables que el código realmente usa (no agregues otras que no estén acá, no se leen):
 
-# Servicio de Correo
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
-EMAIL_FROM=noreply@beautypro.com
+| Variable | Obligatoria | Dónde conseguirla / notas |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Sí | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Supabase → Project Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Supabase → Project Settings → API. Bypassa RLS, solo server-side, nunca commitear |
+| `JWT_SECRET` | Sí (en producción) | Genera con `openssl rand -hex 32`. Sin esta variable el código cae en un fallback inseguro — cualquiera podría forjar una sesión válida |
+| `JWT_EXPIRES_IN` | No (default `7d`) | Duración del token de sesión |
+| `NEXT_PUBLIC_APP_URL` | Sí | URL pública del deploy (ej. `https://span-business.com`) |
+| `RESEND_API_KEY` | No | Necesaria para enviar correos (recibos, bienvenida). Sin ella la app funciona pero no envía emails |
+| `RESEND_FROM` | No | Remitente de los correos enviados con Resend |
+| `CRON_SECRET` | Sí (para los cron jobs) | Genera con `openssl rand -hex 32`. Protege `/api/keep-alive` y `/api/cron/purge-auditoria`. Debe coincidir con el secret configurado en GitHub Actions |
+| `AUDITORIA_RETENCION_DIAS` | No (default `365`) | Días que se conservan los logs de auditoría antes de purgarse automáticamente |
 
-# URL de la aplicación
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+Además, en el repositorio de GitHub (Settings → Secrets and variables → Actions) hay que configurar `CRON_SECRET` (secret, mismo valor que en Render) y `APP_URL` (variable, la URL pública del deploy) para que corran los workflows de keep-alive y purga de auditoría.
 
 ### 4. **Configurar Base de Datos**
 Ejecuta las migraciones en orden secuencial:
