@@ -1,0 +1,24 @@
+name: Purga de auditoría (retención)
+
+on:
+  schedule:
+    # Todos los lunes a las 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purgar logs vencidos
+        run: |
+          if [ -z "${{ vars.APP_URL }}" ]; then
+            echo "Falta configurar la variable de repositorio APP_URL"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "Falta configurar el secreto CRON_SECRET"
+            exit 1
+          fi
+          curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL }}/api/cron/purge-auditoria"

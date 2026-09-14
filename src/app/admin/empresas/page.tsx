@@ -170,6 +170,7 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
       setPlanes(data.planes || []);
     } catch (error) {
       console.error('Error cargando planes:', error);
+      showToast('No se pudieron cargar los planes. La base de datos podría no estar disponible.', 'error');
     } finally {
       setLoadingPlanes(false);
     }
@@ -210,6 +211,7 @@ const pageCount = Math.ceil(filteredEmpresas.length / itemsPerPage);
       setTotalCount(empresasTransformadas.length);
     } catch (error) {
       console.error('Error cargando empresas:', error);
+      showToast('No se pudieron cargar las empresas. La base de datos podría no estar disponible.', 'error');
     } finally {
       setLoadingEmpresas(false);
     }

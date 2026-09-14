@@ -210,6 +210,10 @@ export default function SuscripcionPage() {
       setEmpresa(data);
     } catch (error) {
       console.error('Error cargando datos de empresa:', error);
+      setMessage({
+        type: 'error',
+        text: 'No se pudo conectar con la base de datos. Verifica tu conexión o intenta más tarde.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -223,10 +227,14 @@ export default function SuscripcionPage() {
         .order('precio', { ascending: true });
 
       if (error) throw error;
-      
+
       setPlanes(data || []);
     } catch (error) {
       console.error('Error cargando planes:', error);
+      setMessage({
+        type: 'error',
+        text: 'No se pudieron cargar los planes disponibles. La base de datos podría no estar disponible.'
+      });
     }
   };
 
