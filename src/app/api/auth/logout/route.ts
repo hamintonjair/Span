@@ -7,20 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    // Registrar log de auditoría para logout
-    await registrarLog(createAdminClient(), {
-      empresa_id: undefined, // Logout no está asociado a empresa específica
-      usuario_id: undefined, // Usuario ya no está disponible después de logout
-      accion: 'LOGOUT',
-      modulo: 'AUTH',
-      detalles: {
-        logout_fecha: new Date().toISOString(),
-        logout_ip: request.headers.get('x-forwarded-for') || 'unknown',
-        logout_tipo: 'manual'
-      }
-    });
-
-    // Crear respuesta y limpiar cookie
+    // Crear respuesta y limpiar cookie inmediatamente
     const response = NextResponse.json({
       success: true,
       message: 'Logout exitoso'
@@ -28,13 +15,36 @@ export async function POST(request: NextRequest) {
 
     clearJWTCookie(response);
 
+    // Registrar log de auditoría de forma asíncrona sin bloquear la respuesta al usuario
+    try {
+      const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        registrarLog(createAdminClient(), {
+          empresa_id: undefined,
+          usuario_id: undefined,
+          accion: 'LOGOUT',
+          modulo: 'AUTH',
+          detalles: {
+            logout_fecha: new Date().toISOString(),
+            logout_ip: clientIp,
+            logout_tipo: 'manual'
+          },
+          ip_address: clientIp
+        }).catch((e) => console.error('Error no crítico registrando log de logout:', e));
+      }
+    } catch (e) {
+      // Ignorar para no bloquear la salida del usuario
+    }
+
     return response;
 
   } catch (error) {
     console.error('Error en logout:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    const response = NextResponse.json({
+      success: true,
+      message: 'Logout exitoso'
+    });
+    clearJWTCookie(response);
+    return response;
   }
 }

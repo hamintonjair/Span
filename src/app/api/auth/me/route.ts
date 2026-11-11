@@ -7,12 +7,18 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Verificando token en /api/auth/me...');
     
-    // Obtener token de la cookie
-    const token = request.cookies.get('auth-token')?.value;
+    // Obtener token de la cookie o del header Authorization
+    const authHeader = request.headers.get('authorization');
+    const rawHeaderToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+    const headerToken = (rawHeaderToken && rawHeaderToken !== 'null' && rawHeaderToken !== 'undefined' && rawHeaderToken !== '') 
+      ? rawHeaderToken 
+      : null;
+    const cookieToken = request.cookies.get('auth-token')?.value;
+    const token = headerToken || cookieToken;
     console.log('Token encontrado:', !!token);
 
     if (!token) {
-      console.log('No se encontró token en las cookies');
+      console.log('No se encontró token en las cookies ni en headers');
       return NextResponse.json(
         { error: 'No autorizado - no token found' },
         { status: 401 }

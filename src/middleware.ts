@@ -19,7 +19,10 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.includes(pathname)
 
   // 3. Redirección de cortesía: si usuario está logueado y va a rutas públicas (excepto páginas legales)
-  const token = request.cookies.get('auth-token')?.value
+  const authHeader = request.headers.get('authorization')
+  const rawHeaderToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : null
+  const headerToken = (rawHeaderToken && rawHeaderToken !== 'null' && rawHeaderToken !== 'undefined' && rawHeaderToken !== '') ? rawHeaderToken : null
+  const token = request.cookies.get('auth-token')?.value || headerToken
   
   // Permitir acceso a páginas legales incluso para usuarios logueados
   const legalRoutes = ['/contacto', '/privacidad', '/terminos']
@@ -62,21 +65,17 @@ export async function middleware(request: NextRequest) {
 
   // 7. Verificación especial para roles administrativos
   if (payload.rol === 'admin_global' || payload.rol === 'soporte' || payload.rol === 'ventas') {
-    // Roles administrativos tienen acceso a todo, excepto configuración de empresa
-    if (pathname.startsWith('/configuracion-empresa')) {
-      return NextResponse.redirect(new URL('/admin/dashboard-admin', request.url))
-    }
     return NextResponse.next()
   }
 
   // 8. Para usuarios no admin, verificar que tengan empresa
   if (!payload.empresa_id) {
     // Usuario sin empresa asignada, enviar a configuración
-    return NextResponse.redirect(new URL('/configuracion-empresa', request.url))
+    return NextResponse.redirect(new URL('/configuracion', request.url))
   }
 
   // 9. Rutas especiales que no requieren verificación de módulos
-  const specialRoutes = ['/suscripcion', '/configuracion-empresa', '/dashboard-empresa', '/finanzas-empresa']
+  const specialRoutes = ['/suscripcion', '/configuracion', '/dashboard-empresa', '/finanzas-empresa']
   if (specialRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next()
   }

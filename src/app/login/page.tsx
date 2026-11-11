@@ -64,9 +64,10 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('Iniciando autenticación JWT con:', formData.email);
+      const emailLimpio = formData.email.trim().toLowerCase();
+      console.log('Iniciando autenticación JWT con:', emailLimpio);
       
-      const result = await login(formData.email, formData.password);
+      const result = await login(emailLimpio, formData.password);
       
       console.log('Respuesta de login JWT:', result);
       
@@ -106,11 +107,11 @@ export default function LoginPage() {
         }
         
         // Usuario sin empresa asignada
-        console.log('Usuario sin empresa, redirigiendo a configuración...');
-        window.location.href = '/configuracion-empresa';
+        console.log('Usuario sin empresa, redirigiendo a dashboard...');
+        window.location.href = '/dashboard-empresa';
       } else {
         console.error('Error de autenticación:', result.error);
-        setError('Credenciales inválidas: ' + result.error);
+        setError(result.error || 'Credenciales inválidas');
       }
       
     } catch (error) {

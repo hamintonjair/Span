@@ -403,11 +403,10 @@ export default function Sidebar({ userRole, empresaNombre, userName }: SidebarPr
     return configGlobal?.titular || 'Span';
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
-      await logout();
-      window.location.href = '/login';
-    } catch (error) {
+      logout();
+    } finally {
       window.location.href = '/login';
     }
   };

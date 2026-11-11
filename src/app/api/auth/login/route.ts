@@ -18,22 +18,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Intentando login con email:', email);
+    const normalizedEmail = email ? email.trim().toLowerCase() : '';
+    console.log('Intentando login con email:', normalizedEmail);
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Faltan variables de entorno de Supabase');
+      return NextResponse.json({
+        error: 'Variables de entorno no configuradas en el servidor (NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY).'
+      }, { status: 500 });
+    }
 
     const supabase = createAdminClient();
 
-    // Buscar usuario en usuarios_sistema
+    // Buscar usuario en usuarios_sistema usando búsqueda insensible a mayúsculas/minúsculas
     const { data: user, error } = await supabase
       .from('usuarios_sistema')
       .select('id, email, nombre, rol, empresa_id, password_hash')
-      .eq('email', email)
+      .ilike('email', normalizedEmail)
       .single();
 
-    console.log('Usuario encontrado:', user);
-    console.log('Error en búsqueda:', error);
+    console.log('Usuario encontrado:', !!user);
+    if (error) {
+      console.log('Error en búsqueda de usuario:', error);
+    }
 
     if (error || !user) {
-      console.log('Usuario no encontrado o error:', error);
+      console.log('Usuario no encontrado:', normalizedEmail);
       return NextResponse.json(
         { error: 'Credenciales inválidas - usuario no encontrado' },
         { status: 401 }
@@ -65,26 +75,31 @@ export async function POST(request: NextRequest) {
     const token = await signJWT(payload);
 
     // Registrar log de auditoría para login exitoso
-    await registrarLog(createAdminClient(), {
-      empresa_id: (user as any).empresa_id || undefined,
-      usuario_id: (user as any).id,
-      accion: 'LOGIN',
-      modulo: 'AUTH',
-      detalles: {
+    try {
+      await registrarLog(createAdminClient(), {
+        empresa_id: (user as any).empresa_id || undefined,
         usuario_id: (user as any).id,
-        usuario_email: (user as any).email,
-        usuario_nombre: (user as any).nombre,
-        usuario_rol: (user as any).rol,
-        empresa_id: (user as any).empresa_id,
-        login_fecha: new Date().toISOString(),
-        login_ip: request.headers.get('x-forwarded-for') || 'unknown'
-      }
-    });
+        accion: 'LOGIN',
+        modulo: 'AUTH',
+        detalles: {
+          usuario_id: (user as any).id,
+          usuario_email: (user as any).email,
+          usuario_nombre: (user as any).nombre,
+          usuario_rol: (user as any).rol,
+          empresa_id: (user as any).empresa_id,
+          login_fecha: new Date().toISOString(),
+          login_ip: request.headers.get('x-forwarded-for') || 'unknown'
+        }
+      });
+    } catch (auditError) {
+      console.error('Error registrando log de auditoría en login:', auditError);
+    }
 
     // Crear respuesta y establecer cookie
     const response = NextResponse.json({
       success: true,
       message: 'Login exitoso',
+      token,
       user: {
         id: (user as any).id,
         email: (user as any).email,

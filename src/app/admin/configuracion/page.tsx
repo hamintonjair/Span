@@ -766,8 +766,9 @@ export default function AdminConfiguracionPage() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/configuracion-global', {
-        method: 'PUT',
+      // Usar POST por compatibilidad universal con servidores proxy/CDNs/firewalls
+      let response = await fetch('/api/configuracion-global', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -776,6 +777,20 @@ export default function AdminConfiguracionPage() {
           adminId: user?.id
         })
       });
+
+      // Si el servidor solo admite PUT (p.ej. versión anterior en producción), reintentar con PUT
+      if (response.status === 405) {
+        response = await fetch('/api/configuracion-global', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...config,
+            adminId: user?.id
+          })
+        });
+      }
 
       const data = await response.json();
 

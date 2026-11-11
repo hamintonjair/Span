@@ -35,11 +35,11 @@ async function getConfigGlobal(): Promise<ConfigGlobal | null> {
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getConfigGlobal();
-  const nombreEmpresa = config?.titular;
+  const nombreEmpresa = config?.titular || 'Span Business';
   
   return {
-    title: `${nombreEmpresa} - Sistema de Gestión`,
-    description: `Sistema completo de gestión para tu negocio - ${nombreEmpresa}`,
+    title: `${nombreEmpresa} - Software de Gestión para Salones de Belleza, Barberías y Spas`,
+    description: `Software integral en la nube para salones de belleza, barberías, peluquerías y spas. Control de citas, terminal POS, cálculo de comisiones, inventarios y caja.`,
     icons: {
       icon: '/logo.svg',
       apple: '/logo.svg',

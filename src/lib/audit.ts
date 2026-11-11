@@ -227,18 +227,8 @@ export const registrarLog = async (
   datos: LogAuditoria
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Capturar IP address del cliente
-    let ipAddress = 'Desconocida';
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      if (response.ok) {
-        const data = await response.json();
-        ipAddress = data.ip || 'Desconocida';
-      }
-    } catch (ipError) {
-      console.warn('No se pudo obtener la IP del cliente:', ipError);
-      // Continuar con 'Desconocida' si falla la API
-    }
+    // Usar la IP provista en los datos o un valor por defecto sin llamadas externas lentas
+    const ipAddress = datos.ip_address || 'Desconocida';
 
     const { error } = await supabase
       .from('logs_actividad')

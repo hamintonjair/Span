@@ -38,12 +38,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const getUserFromToken = async () => {
     try {
-      const response = await fetch('/api/auth/me');
-      
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.user);
-      } else {
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      const validStoredToken = (storedToken && storedToken !== 'null' && storedToken !== 'undefined') ? storedToken : null;
+
+      const headers: Record<string, string> = {};
+      if (validStoredToken) {
+        headers['Authorization'] = `Bearer ${validStoredToken}`;
+      }
+
+      // Timeout de seguridad de 3 segundos para que nunca se quede colgado
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch('/api/auth/me', { 
+          headers,
+          credentials: 'include',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData.user);
+        } else {
+          setUser(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token');
+          }
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        console.warn('Timeout o error verificando sesión:', fetchErr);
         setUser(null);
       }
     } catch (error) {
@@ -56,11 +82,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshUser = async () => {
     try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.user);
-      } else {
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      const validStoredToken = (storedToken && storedToken !== 'null' && storedToken !== 'undefined') ? storedToken : null;
+      const headers: Record<string, string> = {};
+      if (validStoredToken) {
+        headers['Authorization'] = `Bearer ${validStoredToken}`;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch('/api/auth/me', { 
+          headers,
+          credentials: 'include',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData.user);
+        } else {
+          setUser(null);
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
         setUser(null);
       }
     } catch (error) {
@@ -76,13 +123,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        if (data.token && typeof window !== 'undefined') {
+          localStorage.setItem('auth-token', data.token);
+        }
         setUser(data.user);
+        setLoading(false);
         return { success: true, user: data.user };
       } else {
         return { success: false, error: data.error };
@@ -95,11 +147,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-token');
+      }
       setUser(null);
+      setLoading(false);
+      // Petición de logout en background sin bloquear
+      fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     } catch (error) {
       console.error('AuthProvider: Error en logout:', error);
-      setUser(null); // Forzar logout local aunque falle la API
+      setUser(null);
+      setLoading(false);
     }
   };
 

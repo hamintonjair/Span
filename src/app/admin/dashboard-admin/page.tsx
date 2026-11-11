@@ -150,26 +150,17 @@ export default async function AdminDashboardPage() {
     proximosVencimientos: []
   };
 
-  // Obtener comprobantes pendientes para el badge
-  const obtenerComprobantesPendientes = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/comprobantes-pendientes`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store'
-      });
-      if (!response.ok) return 0;
-      const data = await response.json();
-      return data?.length || 0;
-    } catch (error) {
-      console.error('Error obteniendo comprobantes pendientes:', error);
-      return 0;
-    }
-  };
-
-  const pendientesCount = await obtenerComprobantesPendientes();
+  // Obtener comprobantes pendientes para el badge directamente desde Supabase
+  let pendientesCount = 0;
+  try {
+    const { count } = await supabaseAdmin
+      .from('comprobantes')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente');
+    pendientesCount = count || 0;
+  } catch (err) {
+    console.error('Error obteniendo comprobantes pendientes:', err);
+  }
 
   return (
     <MainLayout>
