@@ -261,21 +261,6 @@ export default function ContactoPage() {
               </div>
             </div>
           </div>
-
-          {/* Preguntas Frecuentes */}
-          <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6">
-            <h3 className="text-base font-bold text-indigo-950 mb-3 flex items-center gap-2">
-              <span>❓</span> Preguntas Frecuentes
-            </h3>
-            <div className="space-y-3.5 text-xs">
-              {getFaqItems().map((item: any, index: number) => (
-                <div key={item.id || index} className="border-b border-indigo-100 pb-3 last:border-b-0 last:pb-0">
-                  <p className="font-semibold text-indigo-950 mb-1">{item.pregunta}</p>
-                  <p className="text-slate-600 leading-relaxed">{item.respuesta}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Formulario de Contacto */}
@@ -484,6 +469,9 @@ export default function ContactoPage() {
               <Link href="/" className="text-slate-600 hover:text-indigo-600 text-sm font-medium px-3 py-2">
                 Inicio
               </Link>
+              <Link href="/#faq" className="text-slate-600 hover:text-indigo-600 text-sm font-medium px-3 py-2">
+                Preguntas Frecuentes
+              </Link>
               <Link href="/login" className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">
                 Iniciar Sesión
               </Link>
@@ -527,6 +515,7 @@ export default function ContactoPage() {
             Plataforma integral de gestión en la nube para Salones de Belleza, Peluquerías, Barberías y Spas.
           </p>
           <div className="flex justify-center flex-wrap gap-6 text-sm text-slate-400 mb-6">
+            <Link href="/#faq" className="hover:text-white transition-colors">Preguntas Frecuentes</Link>
             <Link href="/privacidad" className="hover:text-white transition-colors">Privacidad</Link>
             <Link href="/terminos" className="hover:text-white transition-colors">Términos y Condiciones</Link>
             <Link href="/contacto" className="hover:text-white transition-colors underline">Contacto y Soporte</Link>

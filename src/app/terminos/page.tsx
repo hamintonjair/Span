@@ -255,6 +255,9 @@ export default function TerminosPage() {
               </Link>
             </div>
             <div className="flex items-center space-x-3">
+              <Link href="/#faq" className="text-slate-600 hover:text-indigo-600 text-sm font-medium px-3 py-2">
+                Preguntas Frecuentes
+              </Link>
               <Link href="/contacto" className="text-slate-600 hover:text-indigo-600 text-sm font-medium px-3 py-2">
                 Contacto
               </Link>
@@ -303,6 +306,7 @@ export default function TerminosPage() {
           <div className="flex justify-center flex-wrap gap-6 text-sm text-slate-400 mb-6">
             <Link href="/privacidad" className="hover:text-white transition-colors">Privacidad</Link>
             <Link href="/terminos" className="hover:text-white transition-colors underline">Términos y Condiciones</Link>
+            <Link href="/#faq" className="hover:text-white transition-colors">Preguntas Frecuentes</Link>
             <Link href="/contacto" className="hover:text-white transition-colors">Contacto y Soporte</Link>
             <a href="mailto:soporte@span-business.com" className="hover:text-white transition-colors">soporte@span-business.com</a>
           </div>

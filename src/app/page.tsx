@@ -30,7 +30,8 @@ import {
   Layers,
   HelpCircle,
   Check,
-  Phone
+  Phone,
+  ChevronDown
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -59,6 +60,8 @@ export default function LandingPage() {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loadingPlanes, setLoadingPlanes] = useState(true);
   const [configGlobal, setConfigGlobal] = useState<any>(null);
+
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   useEffect(() => {
     const fetchPlanes = async () => {
@@ -100,7 +103,7 @@ export default function LandingPage() {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('configuracion_global')
-          .select('titular, email_soporte, whatsapp_soporte')
+          .select('titular, email_soporte, whatsapp_soporte, faq_items')
           .single();
 
         if (data && !error) {
@@ -114,8 +117,42 @@ export default function LandingPage() {
     fetchConfigGlobal();
   }, []);
 
+  const getFaqItems = () => {
+    try {
+      const parsed = JSON.parse(configGlobal?.faq_items || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
+    return [
+      {
+        id: 'faq_1',
+        pregunta: '¿Cómo funciona la prueba gratuita de 15 días?',
+        respuesta: 'Accedes inmediatamente a todas las funciones del plan seleccionado durante 15 días calendario. No requerimos tarjeta de crédito ni firma de contratos.'
+      },
+      {
+        id: 'faq_2',
+        pregunta: '¿Cómo se calculan las comisiones de estilistas y barberos?',
+        respuesta: 'Asignas porcentajes o valores fijos por servicio o producto. El sistema calcula las comisiones en tiempo real en cada venta y descuenta anticipos o préstamos al liquidar.'
+      },
+      {
+        id: 'faq_3',
+        pregunta: '¿Necesito instalar algún programa en mi equipo?',
+        respuesta: 'No. Span Business es 100% en la nube. Puedes acceder desde cualquier computador, tablet o celular con conexión a internet.'
+      },
+      {
+        id: 'faq_4',
+        pregunta: '¿Puedo realizar cierres de caja y controlar el efectivo?',
+        respuesta: 'Sí. Permite aperturas de turno, arqueos parciales y cierres diarios de caja con reportes automáticos enviados a tu correo electrónico.'
+      },
+      {
+        id: 'faq_5',
+        pregunta: '¿Ofrecen soporte y capacitación para mi equipo?',
+        respuesta: 'Sí. Contamos con soporte técnico especializado por WhatsApp (+57 312 494 35 27) y correo electrónico (soporte@span-business.com) de Lunes a Sábado.'
+      }
+    ];
+  };
+
   const getNombreEmpresa = () => {
-    return 'Span Business';
+    return configGlobal?.titular || 'Span Business';
   };
 
   const getEmailSoporte = () => {
@@ -175,10 +212,10 @@ export default function LandingPage() {
 
       {/* Header/Navbar */}
       <header className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-3 group shrink-0">
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md group-hover:bg-indigo-700 transition-colors">
                 <svg 
                   width="28" 
@@ -196,45 +233,48 @@ export default function LandingPage() {
                 </svg>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-                  Span <span className="text-indigo-600">Business</span>
+                <span className="text-2xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                  {getNombreEmpresa()}
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium -mt-1 hidden sm:block">
+                <span className="text-[11px] text-slate-500 font-medium -mt-1 hidden sm:block whitespace-nowrap">
                   Gestión para Salones, Barberías & Spas
                 </span>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8 text-sm font-semibold text-slate-600">
-              <Link href="#soluciones" className="hover:text-indigo-600 transition-colors">
+            <nav className="hidden lg:flex items-center space-x-3 lg:space-x-5 xl:space-x-8 text-sm font-semibold text-slate-600 whitespace-nowrap">
+              <Link href="#soluciones" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
                 Para tu Negocio
               </Link>
-              <Link href="#modulos" className="hover:text-indigo-600 transition-colors">
+              <Link href="#modulos" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
                 Funcionalidades
               </Link>
-              <Link href="#planes" className="hover:text-indigo-600 transition-colors">
+              <Link href="#planes" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
                 Planes y Precios
               </Link>
-              <Link href="/contacto" className="hover:text-indigo-600 transition-colors">
+              <Link href="#faq" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
+                Preguntas Frecuentes
+              </Link>
+              <Link href="/contacto" className="hover:text-indigo-600 transition-colors whitespace-nowrap">
                 Contacto y Soporte
               </Link>
               <Link 
                 href="/login" 
-                className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="text-indigo-600 hover:text-indigo-800 transition-colors whitespace-nowrap"
               >
                 Iniciar Sesión
               </Link>
               <Link 
                 href="/registro" 
-                className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 shadow-sm transition-all hover:shadow active:scale-95"
+                className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 shadow-sm transition-all hover:shadow active:scale-95 whitespace-nowrap shrink-0"
               >
                 Prueba 15 Días Gratis
               </Link>
             </nav>
 
             {/* Mobile menu button */}
-            <div className="md:hidden">
+            <div className="lg:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="text-slate-700 hover:text-slate-900 p-2 rounded-lg"
@@ -247,7 +287,7 @@ export default function LandingPage() {
 
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <div className="md:hidden py-4 space-y-3 border-t border-slate-200 bg-white">
+            <div className="lg:hidden py-4 space-y-3 border-t border-slate-200 bg-white">
               <Link 
                 href="#soluciones" 
                 className="block px-3 py-2 text-slate-700 hover:text-indigo-600 font-medium rounded-lg"
@@ -268,6 +308,13 @@ export default function LandingPage() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Planes y Precios
+              </Link>
+              <Link 
+                href="#faq" 
+                className="block px-3 py-2 text-slate-700 hover:text-indigo-600 font-medium rounded-lg"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Preguntas Frecuentes
               </Link>
               <Link 
                 href="/contacto" 
@@ -735,6 +782,75 @@ export default function LandingPage() {
                 <p className="font-bold text-slate-900 mb-1">3. Tú decides si continuar</p>
                 <p>Al terminar la prueba, si estás satisfecho, activas tu plan vía transferencia bancaria. Si no, no se cobra nada.</p>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Preguntas Frecuentes Section */}
+      <section id="faq" className="py-20 bg-slate-50 border-t border-slate-200">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold mb-3">
+              <HelpCircle className="w-4 h-4 text-indigo-600" />
+              <span>Resuelve tus Dudas</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+              Preguntas Frecuentes
+            </h2>
+            <p className="text-slate-600 text-base sm:text-lg">
+              Todo lo que necesitas saber antes de empezar tus 15 días de prueba gratis en Span Business.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {getFaqItems().map((faq: any, index: number) => {
+              const isOpen = openFaqIndex === index;
+              return (
+                <div 
+                  key={faq.id || index}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200"
+                >
+                  <button
+                    onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                    className="w-full p-6 text-left flex justify-between items-center gap-4 hover:bg-slate-50/80 transition-colors focus:outline-none"
+                    aria-expanded={isOpen}
+                  >
+                    <span className="text-base sm:text-lg font-bold text-slate-900 pr-2">
+                      {faq.pregunta}
+                    </span>
+                    <div className={`p-1.5 rounded-full bg-slate-100 text-slate-600 transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180 bg-indigo-100 text-indigo-600' : ''}`}>
+                      <ChevronDown className="w-5 h-5" />
+                    </div>
+                  </button>
+                  
+                  {isOpen && (
+                    <div className="px-6 pb-6 pt-1 text-slate-600 text-sm sm:text-base leading-relaxed border-t border-slate-100 bg-slate-50/40">
+                      {faq.respuesta}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <p className="text-sm text-slate-600 mb-3 font-medium">
+              ¿Tienes otra pregunta sobre la configuración para tu negocio?
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-bold">
+              <Link href="/contacto" className="text-indigo-600 hover:text-indigo-800 underline">
+                Enviar mensaje a soporte →
+              </Link>
+              <span className="text-slate-300">•</span>
+              <a 
+                href={`https://wa.me/${getWhatsappSoporte().replace(/[^0-9]/g, '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-green-600 hover:text-green-700 underline flex items-center gap-1.5"
+              >
+                <span>WhatsApp Directo: {getWhatsappSoporte()}</span>
+              </a>
             </div>
           </div>
         </div>

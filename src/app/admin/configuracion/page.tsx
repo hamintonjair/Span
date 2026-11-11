@@ -949,17 +949,20 @@ export default function AdminConfiguracionPage() {
                 
                 <div>
                   <label htmlFor="titular" className="block text-sm font-medium text-gray-700 mb-2">
-                    Titular de la Cuenta *
+                    Nombre / Marca del Sistema (Titular) *
                   </label>
                   <input
                     id="titular"
                     type="text"
                     value={config.titular}
                     onChange={(e) => handleInputChange('titular', e.target.value)}
-                    placeholder="Ej: Mi Empresa S.A."
+                    placeholder="Ej: Span Business"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Este es el nombre o marca que se muestra en el logo del encabezado, páginas públicas y facturas.
+                  </p>
                 </div>
                 
                 <div>
